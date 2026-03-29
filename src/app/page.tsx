@@ -77,10 +77,77 @@ export default function Home() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+
+      // Immediately show the paper
       await fetchPapers();
+      setSelectedPaperId(data.paper.id);
+      setSelectedPaper(data.paper);
+      setChatMessages([]);
+      setShowAddModal(false);
+      setView("list");
+
+      // Enrich in the background (summary, connections) with streaming
+      if (!data.alreadyExists) {
+        enrichPaper(data.paper.id);
+      }
     } finally {
       setAdding(false);
     }
+  };
+
+  const enrichPaper = (paperId: string) => {
+    const evtSource = new EventSource(`/api/papers/${encodeURIComponent(paperId)}/enrich`);
+
+    // EventSource only does GET, so use fetch with POST instead
+    fetch(`/api/papers/${encodeURIComponent(paperId)}/enrich`, { method: "POST" })
+      .then(async (res) => {
+        if (!res.body) return;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamedSummary = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const eventData = JSON.parse(line.slice(6));
+                // Check previous line for event type
+                const eventLine = lines[lines.indexOf(line) - 1];
+                const eventType = eventLine?.startsWith("event: ")
+                  ? eventLine.slice(7)
+                  : "";
+
+                if (eventType === "summary_chunk") {
+                  streamedSummary += eventData.text;
+                  setSelectedPaper((prev) =>
+                    prev && prev.id === paperId
+                      ? { ...prev, summary: streamedSummary }
+                      : prev
+                  );
+                } else if (eventType === "metadata") {
+                  setSelectedPaper((prev) =>
+                    prev && prev.id === paperId
+                      ? { ...prev, ...eventData }
+                      : prev
+                  );
+                  fetchPapers();
+                } else if (eventType === "done") {
+                  fetchPapers();
+                }
+              } catch {}
+            }
+          }
+        }
+      })
+      .catch(console.error);
   };
 
   // Toggle read status
