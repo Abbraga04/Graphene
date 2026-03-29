@@ -31,7 +31,7 @@ export async function chatAboutPaper(
   history: { role: "user" | "assistant"; content: string }[],
   question: string
 ): Promise<string> {
-  const systemPrompt = `You are a research assistant helping a user understand an academic paper. Be concise and precise. Use the paper context below to answer questions.
+  const systemPrompt = `You are a research assistant helping a user understand an academic paper. Be concise and precise. Use the paper context below to answer questions. Do NOT use markdown formatting — no **, ##, or other markup. Use plain text only.
 
 Paper: "${title}"
 

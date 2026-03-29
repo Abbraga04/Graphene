@@ -22,10 +22,6 @@ export async function GET(
     return NextResponse.json({ error: "Paper not found" }, { status: 404 });
   }
 
-  // Check if we already have cached HTML in notes (prefixed with <!--html-->)
-  if (paper.notes?.startsWith("<!--html-->")) {
-    return NextResponse.json({ html: paper.notes.replace("<!--html-->", "") });
-  }
 
   const pdfUrl = paper.pdf_url || paper.source_url;
   if (!pdfUrl) {
@@ -82,12 +78,6 @@ ${text.slice(0, 30000)}`,
       .replace(/^```html?\n?/i, "")
       .replace(/\n?```$/i, "")
       .trim();
-
-    // Cache it in notes
-    await supabase
-      .from("papers")
-      .update({ notes: "<!--html-->" + cleanHtml })
-      .eq("id", id);
 
     return NextResponse.json({ html: cleanHtml });
   } catch (e) {
