@@ -299,6 +299,44 @@ export async function POST(
         console.error("Connection finding failed:", e);
       }
 
+      // BS Score — rate the paper's credibility
+      send("status", { step: "rating" });
+      try {
+        const bsMsg = await client.messages.create({
+          model: "claude-opus-4-6",
+          max_tokens: 512,
+          messages: [
+            {
+              role: "user",
+              content: `Rate this academic paper on a bullshit scale. Return ONLY valid JSON with this exact structure:
+{
+  "overall": <0-100 integer, 0 = groundbreaking legit work, 100 = total bullshit>,
+  "novelty": <0-100, 0 = truly novel, 100 = nothing new>,
+  "methodology": <0-100, 0 = rigorous, 100 = hand-wavy>,
+  "claims_vs_evidence": <0-100, 0 = well-supported, 100 = wild overclaims>,
+  "buzzword_density": <0-100, 0 = precise language, 100 = buzzword soup>,
+  "reproducibility": <0-100, 0 = easily reproducible, 100 = impossible to reproduce>,
+  "verdict": "<one sentence roast or praise>"
+}
+
+Be honest and harsh. "Attention Is All You Need" would score ~5 overall. A paper that just combines existing methods with no insight and overclaims results would score 70-90.
+
+Title: ${title}
+${contextForSummary.slice(0, 8000)}`,
+            },
+          ],
+        });
+        const bsText = bsMsg.content[0].type === "text" ? bsMsg.content[0].text : "{}";
+        const bsMatch = bsText.match(/\{[\s\S]*\}/);
+        if (bsMatch) {
+          const bsScore = JSON.parse(bsMatch[0]);
+          await supabase.from("papers").update({ bs_score: bsScore }).eq("id", id);
+          send("bs_score", bsScore);
+        }
+      } catch (e) {
+        console.error("BS score failed:", e);
+      }
+
       send("done", {});
       controller.close();
     },

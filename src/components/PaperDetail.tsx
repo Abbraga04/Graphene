@@ -207,6 +207,55 @@ export default function PaperDetail({
               </div>
             )}
 
+            {/* BS Score */}
+            {(paper as any).bs_score && (
+              <div>
+                <h3 className="text-[10px] text-text-dim tracking-[0.2em] uppercase mb-2">
+                  BS Rating
+                </h3>
+                <div className="border border-border p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-bold" style={{
+                      color: (paper as any).bs_score.overall <= 20 ? "#8bf7c4"
+                        : (paper as any).bs_score.overall <= 50 ? "#f7e88b"
+                        : (paper as any).bs_score.overall <= 75 ? "#f7a08b"
+                        : "#f78b8b"
+                    }}>
+                      {(paper as any).bs_score.overall}%
+                    </span>
+                    <span className="text-[10px] text-text-dim tracking-wider uppercase">
+                      {(paper as any).bs_score.overall <= 20 ? "Legit"
+                        : (paper as any).bs_score.overall <= 40 ? "Mostly solid"
+                        : (paper as any).bs_score.overall <= 60 ? "Questionable"
+                        : (paper as any).bs_score.overall <= 80 ? "Smells like BS"
+                        : "Pure BS"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-text italic">
+                    {(paper as any).bs_score.verdict}
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5 mt-2">
+                    {[
+                      ["Novelty", (paper as any).bs_score.novelty],
+                      ["Methodology", (paper as any).bs_score.methodology],
+                      ["Claims vs Evidence", (paper as any).bs_score.claims_vs_evidence],
+                      ["Buzzword Density", (paper as any).bs_score.buzzword_density],
+                      ["Reproducibility", (paper as any).bs_score.reproducibility],
+                    ].map(([label, val]) => (
+                      <div key={label as string} className="flex items-center justify-between text-[9px]">
+                        <span className="text-text-dim">{label}</span>
+                        <span style={{
+                          color: (val as number) <= 30 ? "#8bf7c4"
+                            : (val as number) <= 60 ? "#f7e88b"
+                            : "#f78b8b"
+                        }}>{val}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* AI Summary */}
             <div>
               <h3 className="text-[10px] text-text-dim tracking-[0.2em] uppercase mb-2">

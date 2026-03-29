@@ -149,6 +149,12 @@ export default function Home() {
                       : prev
                   );
                   fetchPapers();
+                } else if (eventType === "bs_score") {
+                  setSelectedPaper((prev) =>
+                    prev && prev.id === paperId
+                      ? { ...prev, bs_score: eventData }
+                      : prev
+                  );
                 } else if (eventType === "done") {
                   fetchPapers();
                 }

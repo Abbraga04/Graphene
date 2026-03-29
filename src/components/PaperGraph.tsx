@@ -172,18 +172,24 @@ export default function PaperGraph({
         nodeThreeObject={nodeThreeObject}
         nodeThreeObjectExtend={false}
         onNodeClick={handleNodeClick}
+        onEngineStop={() => {
+          if (graphRef.current) {
+            graphRef.current.zoomToFit(500, 60);
+          }
+        }}
         linkColor={() => "#333333"}
         linkWidth={(link: any) => (link.strength || 0.5) * 1.5}
         linkOpacity={0.3}
         backgroundColor="#000000"
         showNavInfo={false}
-        cooldownTime={4000}
-        d3AlphaDecay={0.01}
-        d3VelocityDecay={0.2}
+        cooldownTime={3000}
+        d3AlphaDecay={0.02}
+        d3VelocityDecay={0.3}
         d3Force="charge"
         d3ForceConfig={{
-          charge: { strength: -120, distanceMax: 300 },
-          link: { distance: 50 },
+          charge: { strength: -80, distanceMax: 150 },
+          link: { distance: 30 },
+          center: { strength: 1 },
         }}
       />
     </div>
