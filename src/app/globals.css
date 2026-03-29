@@ -14,11 +14,19 @@
 }
 
 @layer base {
-  html, body {
+  html {
+    overflow: hidden;
+    height: 100%;
+  }
+
+  body {
     background: var(--color-bg);
     color: var(--color-text);
     font-family: var(--font-mono);
     overscroll-behavior: none;
+    overflow-y: auto;
+    height: 100%;
+    -webkit-overflow-scrolling: touch;
   }
 
   ::-webkit-scrollbar {
