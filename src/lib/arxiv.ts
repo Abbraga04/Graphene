@@ -23,11 +23,19 @@ export async function fetchArxivPaper(arxivId: string): Promise<ArxivResult | nu
     .replace(/\.pdf$/, "")
     .replace(/v\d+$/, "")
     .trim();
-  const url = `http://export.arxiv.org/api/query?id_list=${cleanId}`;
-  const res = await fetch(url);
-  const text = await res.text();
-  const results = parseArxivXml(text);
-  return results[0] || null;
+  // Retry up to 3 times with backoff (arxiv rate limits aggressively)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
+    const url = `https://export.arxiv.org/api/query?id_list=${cleanId}`;
+    const res = await fetch(url);
+    const text = await res.text();
+    if (text.includes("Rate exceeded") || text.includes("rate limit")) {
+      continue;
+    }
+    const results = parseArxivXml(text);
+    if (results.length > 0) return results[0];
+  }
+  return null;
 }
 
 function parseArxivXml(xml: string): ArxivResult[] {
