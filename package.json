@@ -1,0 +1,38 @@
+{
+  "name": "lattice",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@supabase/supabase-js": "^2.100.1",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "cheerio": "^1.2.0",
+    "d3-force-3d": "^3.0.6",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.7.0",
+    "next": "^16.2.1",
+    "pdf-parse": "^2.4.5",
+    "postcss": "^8.5.8",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.2.2",
+    "three": "^0.183.2",
+    "typescript": "^6.0.2"
+  },
+  "devDependencies": {
+    "@types/cheerio": "^0.22.35",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/three": "^0.183.1"
+  }
+}
