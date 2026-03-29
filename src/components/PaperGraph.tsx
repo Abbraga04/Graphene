@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useMemo, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { useRef, useMemo, useState, useCallback } from "react";
+import { Canvas, useFrame, ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Text, Line } from "@react-three/drei";
 import { Paper, PaperConnection } from "@/lib/supabase";
 
@@ -37,7 +37,7 @@ function buildGraph(papers: Paper[], connections: PaperConnection[]) {
       categoryMap.set(primaryCat, clusterIdx++);
     }
     const cluster = categoryMap.get(primaryCat)!;
-    const total = Math.max(categoryMap.size, 1);
+    const total = Math.max(clusterIdx, 1);
     const angle = (cluster / total) * Math.PI * 2;
     const radius = 12;
     return {
@@ -73,9 +73,8 @@ function simulateForces(nodes: GraphNode[], edges: GraphEdge[]) {
       const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) + 0.5;
       const force = 3.0 / (dist * dist);
-      const fx = (dx / dist) * force, fy = (dy / dist) * force, fz = (dz / dist) * force;
-      a.vx += fx; a.vy += fy; a.vz += fz;
-      b.vx -= fx; b.vy -= fy; b.vz -= fz;
+      a.vx += (dx / dist) * force; a.vy += (dy / dist) * force; a.vz += (dz / dist) * force;
+      b.vx -= (dx / dist) * force; b.vy -= (dy / dist) * force; b.vz -= (dz / dist) * force;
     }
   }
 
@@ -108,36 +107,45 @@ function simulateForces(nodes: GraphNode[], edges: GraphEdge[]) {
   }
 }
 
-function NodeMesh({ node, isHovered, isSelected, onHover, onClick }: {
+function PaperNode({
+  node, isHovered, isSelected, onHover, onClick,
+}: {
   node: GraphNode; isHovered: boolean; isSelected: boolean;
   onHover: (id: string | null) => void; onClick: (id: string) => void;
 }) {
   const scale = isSelected ? 1.5 : isHovered ? 1.3 : 1;
   const label = node.title.length > 45 ? node.title.slice(0, 45) + "..." : node.title;
 
+  const handleOver = useCallback((e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    onHover(node.id);
+  }, [node.id, onHover]);
+
+  const handleOut = useCallback(() => onHover(null), [onHover]);
+
+  const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    onClick(node.id);
+  }, [node.id, onClick]);
+
   return (
     <group position={[node.x, node.y, node.z]}>
-      <mesh
-        scale={scale}
-        onPointerOver={(e) => { e.stopPropagation(); onHover(node.id); }}
-        onPointerOut={() => onHover(null)}
-        onClick={(e) => { e.stopPropagation(); onClick(node.id); }}
-      >
-        <sphereGeometry args={[0.45, 16, 16]} />
+      <mesh scale={scale} onPointerOver={handleOver} onPointerOut={handleOut} onClick={handleClick}>
+        <sphereGeometry args={[0.45, 12, 12]} />
         <meshStandardMaterial
           color={node.isRead ? "#ffffff" : "#aaaaaa"}
-          emissive={isSelected ? "#ffffff" : isHovered ? "#888888" : "#222222"}
-          emissiveIntensity={isSelected ? 0.6 : isHovered ? 0.4 : 0.15}
+          emissive={isSelected ? "#ffffff" : isHovered ? "#666666" : "#111111"}
+          emissiveIntensity={isSelected ? 0.5 : isHovered ? 0.3 : 0.1}
         />
       </mesh>
       <Text
         position={[0, 0.85, 0]}
-        fontSize={isHovered || isSelected ? 0.32 : 0.2}
-        color={isHovered || isSelected ? "#ffffff" : "#999999"}
+        fontSize={isHovered || isSelected ? 0.3 : 0.18}
+        color={isHovered || isSelected ? "#ffffff" : "#888888"}
         anchorX="center"
         anchorY="bottom"
         maxWidth={6}
-        outlineWidth={0.025}
+        outlineWidth={0.02}
         outlineColor="#000000"
       >
         {label}
@@ -146,92 +154,103 @@ function NodeMesh({ node, isHovered, isSelected, onHover, onClick }: {
   );
 }
 
-function ClusterCloud({ name, nodes }: { name: string; nodes: GraphNode[] }) {
-  const cx = nodes.reduce((s, n) => s + n.x, 0) / nodes.length;
-  const cy = nodes.reduce((s, n) => s + n.y, 0) / nodes.length;
-  const cz = nodes.reduce((s, n) => s + n.z, 0) / nodes.length;
-  const maxY = Math.max(...nodes.map((n) => n.y));
-
-  return (
-    <Text
-      position={[cx, maxY + 2.5, cz]}
-      fontSize={0.55}
-      color="#333333"
-      anchorX="center"
-      anchorY="bottom"
-      outlineWidth={0.02}
-      outlineColor="#000000"
-      letterSpacing={0.12}
-    >
-      {name.toUpperCase()}
-    </Text>
-  );
-}
-
-function EdgeLine({ from, to, strength }: {
-  from: [number, number, number]; to: [number, number, number]; strength: number;
-}) {
-  return (
-    <Line
-      points={[from, to]}
-      color="#444444"
-      lineWidth={1}
-      transparent
-      opacity={strength * 0.7}
-    />
-  );
-}
-
-function Scene({ papers, connections, onSelectPaper, selectedPaperId }: {
+function Scene({
+  papers, connections, onSelectPaper, selectedPaperId,
+}: {
   papers: Paper[]; connections: PaperConnection[];
   onSelectPaper: (id: string) => void; selectedPaperId: string | null;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const { nodes, edges } = useMemo(() => buildGraph(papers, connections), [papers, connections]);
-  const nodesRef = useRef(nodes);
-  nodesRef.current = nodes;
-  const [, setTick] = useState(0);
+  const graphData = useMemo(() => buildGraph(papers, connections), [papers, connections]);
+  const nodesRef = useRef(graphData.nodes);
+  const edgesRef = useRef(graphData.edges);
+  nodesRef.current = graphData.nodes;
+  edgesRef.current = graphData.edges;
+  const [tick, setTick] = useState(0);
 
   useFrame(() => {
-    simulateForces(nodesRef.current, edges);
+    simulateForces(nodesRef.current, edgesRef.current);
     setTick((t) => t + 1);
   });
 
-  const nodeMap = useMemo(() => new Map(nodesRef.current.map((n) => [n.id, n])), [nodesRef.current]);
+  // Build edge points for rendering
+  const edgeLines = useMemo(() => {
+    const nodeMap = new Map(nodesRef.current.map((n) => [n.id, n]));
+    return edgesRef.current
+      .map((edge) => {
+        const a = nodeMap.get(edge.source);
+        const b = nodeMap.get(edge.target);
+        if (!a || !b) return null;
+        return {
+          points: [[a.x, a.y, a.z] as [number, number, number], [b.x, b.y, b.z] as [number, number, number]],
+          strength: edge.strength,
+        };
+      })
+      .filter(Boolean) as { points: [number, number, number][]; strength: number }[];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick]);
 
-  const clusterGroups = useMemo(() => {
+  // Cluster labels
+  const clusterLabels = useMemo(() => {
     const groups = new Map<string, GraphNode[]>();
     for (const n of nodesRef.current) {
       const arr = groups.get(n.clusterName) || [];
       arr.push(n);
       groups.set(n.clusterName, arr);
     }
-    return groups;
-  }, [nodesRef.current]);
+    return Array.from(groups.entries()).map(([name, groupNodes]) => {
+      const cx = groupNodes.reduce((s, n) => s + n.x, 0) / groupNodes.length;
+      const maxY = Math.max(...groupNodes.map((n) => n.y));
+      const cz = groupNodes.reduce((s, n) => s + n.z, 0) / groupNodes.length;
+      return { name, x: cx, y: maxY + 2.5, z: cz };
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick]);
 
   return (
     <>
-      <ambientLight intensity={0.5} />
-      <pointLight position={[20, 20, 20]} intensity={0.6} />
-      <pointLight position={[-20, -10, -20]} intensity={0.2} />
+      <ambientLight intensity={0.6} />
+      <pointLight position={[20, 20, 20]} intensity={0.5} />
 
-      {edges.map((edge, i) => {
-        const a = nodeMap.get(edge.source), b = nodeMap.get(edge.target);
-        if (!a || !b) return null;
-        return <EdgeLine key={i} from={[a.x, a.y, a.z]} to={[b.x, b.y, b.z]} strength={edge.strength} />;
-      })}
-
-      {nodesRef.current.map((node) => (
-        <NodeMesh
-          key={node.id} node={node}
-          isHovered={hoveredId === node.id}
-          isSelected={selectedPaperId === node.id}
-          onHover={setHoveredId} onClick={onSelectPaper}
+      {/* Edge lines */}
+      {edgeLines.map((edge, i) => (
+        <Line
+          key={i}
+          points={edge.points}
+          color="#333333"
+          lineWidth={1}
+          opacity={edge.strength * 0.6}
+          transparent
         />
       ))}
 
-      {Array.from(clusterGroups.entries()).map(([name, groupNodes]) => (
-        <ClusterCloud key={name} name={name} nodes={groupNodes} />
+      {/* Nodes */}
+      {nodesRef.current.map((node) => (
+        <PaperNode
+          key={node.id}
+          node={node}
+          isHovered={hoveredId === node.id}
+          isSelected={selectedPaperId === node.id}
+          onHover={setHoveredId}
+          onClick={onSelectPaper}
+        />
+      ))}
+
+      {/* Cluster labels */}
+      {clusterLabels.map((cl) => (
+        <Text
+          key={cl.name}
+          position={[cl.x, cl.y, cl.z]}
+          fontSize={0.5}
+          color="#333333"
+          anchorX="center"
+          anchorY="bottom"
+          outlineWidth={0.02}
+          outlineColor="#000000"
+          letterSpacing={0.1}
+        >
+          {cl.name.toUpperCase()}
+        </Text>
       ))}
 
       <OrbitControls enableDamping dampingFactor={0.05} minDistance={5} maxDistance={60} />
@@ -239,16 +258,18 @@ function Scene({ papers, connections, onSelectPaper, selectedPaperId }: {
   );
 }
 
-export default function PaperGraph({ papers, connections, onSelectPaper, selectedPaperId }: {
+export default function PaperGraph({
+  papers, connections, onSelectPaper, selectedPaperId,
+}: {
   papers: Paper[]; connections: PaperConnection[];
   onSelectPaper: (id: string) => void; selectedPaperId: string | null;
 }) {
   if (papers.length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-neutral-600">
+      <div className="w-full h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4 font-mono">&lt;/&gt;</div>
-          <p className="text-sm tracking-widest uppercase">No papers yet</p>
+          <div className="text-6xl mb-4 font-mono text-neutral-700">&lt;/&gt;</div>
+          <p className="text-sm tracking-widest uppercase text-neutral-600">No papers yet</p>
           <p className="text-xs text-neutral-700 mt-2">Add a paper to begin mapping</p>
         </div>
       </div>
@@ -256,8 +277,19 @@ export default function PaperGraph({ papers, connections, onSelectPaper, selecte
   }
 
   return (
-    <Canvas camera={{ position: [0, 10, 28], fov: 55 }} style={{ background: "#000000" }} gl={{ antialias: true }}>
-      <Scene papers={papers} connections={connections} onSelectPaper={onSelectPaper} selectedPaperId={selectedPaperId} />
-    </Canvas>
+    <div className="w-full h-full" style={{ background: "#000" }}>
+      <Canvas
+        camera={{ position: [0, 10, 28], fov: 55 }}
+        gl={{ antialias: true, alpha: false }}
+        onCreated={({ gl }) => gl.setClearColor("#000000")}
+      >
+        <Scene
+          papers={papers}
+          connections={connections}
+          onSelectPaper={onSelectPaper}
+          selectedPaperId={selectedPaperId}
+        />
+      </Canvas>
+    </div>
   );
 }

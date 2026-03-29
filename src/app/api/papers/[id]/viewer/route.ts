@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const proxy = req.nextUrl.searchParams.get("proxy") === "1";
 
   const { data: paper } = await supabase
     .from("papers")
@@ -20,16 +21,103 @@ export async function GET(
   const isArxiv = !id.startsWith("web-");
 
   if (isArxiv) {
-    // Check if HTML version exists
     const htmlUrl = `https://arxiv.org/html/${id}`;
+
+    // If proxy mode, fetch and clean the HTML
+    if (proxy) {
+      try {
+        const res = await fetch(htmlUrl);
+        if (res.ok) {
+          let html = await res.text();
+
+          // Check if it's actually a "No HTML" page
+          if (html.includes("No HTML for") || html.includes("HTML is not available")) {
+            return NextResponse.json({ fallback: "pdf" });
+          }
+
+          // Strip arxiv banner, header, footer
+          html = html
+            .replace(/<header[\s\S]*?<\/header>/gi, "")
+            .replace(/<nav[\s\S]*?<\/nav>/gi, "")
+            .replace(/<footer[\s\S]*?<\/footer>/gi, "")
+            .replace(/<div[^>]*class="[^"]*ltx_page_header[^"]*"[\s\S]*?<\/div>/gi, "")
+            .replace(/<div[^>]*class="[^"]*ltx_page_footer[^"]*"[\s\S]*?<\/div>/gi, "")
+            .replace(/<div[^>]*id="bib_section"[\s\S]*?<\/div>/gi, "");
+
+          // Inject dark theme CSS
+          const darkCss = `<style>
+            body, .ltx_page_main, .ltx_document {
+              background: #1a1a1a !important;
+              color: #e0e0e0 !important;
+            }
+            h1, h2, h3, h4, h5, h6,
+            .ltx_title, .ltx_personname, .ltx_role {
+              color: #ffffff !important;
+            }
+            a { color: #888 !important; }
+            a:hover { color: #fff !important; }
+            .ltx_abstract, .ltx_para, p, li, td, th, span, div {
+              color: #d0d0d0 !important;
+            }
+            .ltx_bibblock, .ltx_bib_cited {
+              color: #888 !important;
+            }
+            figure, .ltx_figure, .ltx_table {
+              border-color: #333 !important;
+              background: #111 !important;
+            }
+            img { filter: brightness(0.9); }
+            table, th, td {
+              border-color: #333 !important;
+            }
+            .ltx_listing, pre, code {
+              background: #111 !important;
+              color: #ccc !important;
+            }
+            .ltx_note_content {
+              background: #222 !important;
+              color: #aaa !important;
+            }
+            /* Hide any remaining arxiv chrome */
+            .package-alerts, .html-header-message,
+            [class*="banner"], [class*="alert"],
+            .arxiv-watermark, .ltx_page_logo {
+              display: none !important;
+            }
+            /* Clean up spacing */
+            .ltx_page_main {
+              max-width: 900px !important;
+              margin: 0 auto !important;
+              padding: 40px 60px !important;
+            }
+          </style>`;
+
+          // Make relative URLs absolute
+          html = html.replace(/(href|src)="\/(?!\/)/g, '$1="https://arxiv.org/');
+
+          // Inject CSS before </head>
+          html = html.replace("</head>", darkCss + "</head>");
+
+          return new NextResponse(html, {
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          });
+        }
+      } catch (e) {
+        console.error("HTML proxy failed:", e);
+      }
+
+      // Fall back to PDF
+      return NextResponse.json({ fallback: "pdf" });
+    }
+
+    // Non-proxy: check if HTML exists
     try {
       const res = await fetch(htmlUrl, { method: "HEAD" });
-      if (res.ok && !res.url.includes("unavailable")) {
-        return NextResponse.json({ url: htmlUrl, type: "html" });
+      if (res.ok) {
+        return NextResponse.json({ url: `/api/papers/${encodeURIComponent(id)}/viewer?proxy=1`, type: "html" });
       }
     } catch {}
 
-    // Fall back to PDF
     const pdfUrl = paper.pdf_url || `https://arxiv.org/pdf/${id}`;
     return NextResponse.json({ url: pdfUrl, type: "pdf" });
   }
