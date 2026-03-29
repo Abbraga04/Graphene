@@ -1,15 +1,18 @@
 import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabase";
 import Anthropic from "@anthropic-ai/sdk";
+import { getUser } from "@/lib/auth";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getUser(req);
+  if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   const { id } = await params;
 
   const { data: paper } = await supabase

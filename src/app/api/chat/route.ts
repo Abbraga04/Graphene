@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { chatAboutPaper } from "@/lib/ai";
+import { getUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  const user = await getUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { paperId, question, history } = await req.json();
 
   if (!paperId || !question) {

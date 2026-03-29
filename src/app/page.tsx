@@ -25,7 +25,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { LogOut } from "lucide-react";
 
 export default function Home() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut, getToken } = useAuth();
 
   if (authLoading) {
     return (
@@ -39,10 +39,22 @@ export default function Home() {
     return <LoginPage />;
   }
 
-  return <AppContent user={user} signOut={signOut} />;
+  return <AppContent user={user} signOut={signOut} getToken={getToken} />;
 }
 
-function AppContent({ user, signOut }: { user: { id: string; email?: string }; signOut: () => void }) {
+function AppContent({ user, signOut, getToken }: { user: { id: string; email?: string }; signOut: () => void; getToken: () => Promise<string | null> }) {
+  // Helper for authenticated fetch
+  const authFetch = async (url: string, opts: RequestInit = {}) => {
+    const token = await getToken();
+    return fetch(url, {
+      ...opts,
+      headers: {
+        ...opts.headers as Record<string, string>,
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  };
   const [papers, setPapers] = useState<Paper[]>([]);
   const [connections, setConnections] = useState<PaperConnection[]>([]);
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
@@ -63,7 +75,7 @@ function AppContent({ user, signOut }: { user: { id: string; email?: string }; s
   // Fetch all papers
   const fetchPapers = useCallback(async () => {
     try {
-      const res = await fetch(`/api/papers?user_id=${user.id}`);
+      const res = await authFetch(`/api/papers?user_id=${user.id}`);
       const data = await res.json();
       setPapers(data.papers || []);
       setConnections(data.connections || []);
@@ -82,7 +94,7 @@ function AppContent({ user, signOut }: { user: { id: string; email?: string }; s
   const selectPaper = useCallback(async (id: string) => {
     setSelectedPaperId(id);
     try {
-      const res = await fetch(`/api/papers/${encodeURIComponent(id)}`);
+      const res = await authFetch(`/api/papers/${encodeURIComponent(id)}`);
       const data = await res.json();
       setSelectedPaper(data.paper);
       setChatMessages(data.messages || []);
@@ -99,7 +111,7 @@ function AppContent({ user, signOut }: { user: { id: string; email?: string }; s
     setAdding(true);
 
     try {
-      const res = await fetch("/api/papers", {
+      const res = await authFetch("/api/papers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url, user_id: user.id }),
@@ -131,7 +143,7 @@ function AppContent({ user, signOut }: { user: { id: string; email?: string }; s
     const evtSource = new EventSource(`/api/papers/${encodeURIComponent(paperId)}/enrich`);
 
     // EventSource only does GET, so use fetch with POST instead
-    fetch(`/api/papers/${encodeURIComponent(paperId)}/enrich`, { method: "POST" })
+    authFetch(`/api/papers/${encodeURIComponent(paperId)}/enrich`, { method: "POST" })
       .then(async (res) => {
         if (!res.body) return;
         const reader = res.body.getReader();
@@ -192,7 +204,7 @@ function AppContent({ user, signOut }: { user: { id: string; email?: string }; s
   const handleToggleRead = async () => {
     if (!selectedPaper) return;
     try {
-      const res = await fetch(`/api/papers/${encodeURIComponent(selectedPaper.id)}`, {
+      const res = await authFetch(`/api/papers/${encodeURIComponent(selectedPaper.id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ is_read: !selectedPaper.is_read }),
@@ -209,7 +221,7 @@ function AppContent({ user, signOut }: { user: { id: string; email?: string }; s
   const handleUpdateNotes = async (notes: string) => {
     if (!selectedPaper) return;
     try {
-      await fetch(`/api/papers/${encodeURIComponent(selectedPaper.id)}`, {
+      await authFetch(`/api/papers/${encodeURIComponent(selectedPaper.id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes }),
@@ -457,6 +469,7 @@ function AppContent({ user, signOut }: { user: { id: string; email?: string }; s
                   }}
                   onToggleRead={handleToggleRead}
                   onUpdateNotes={handleUpdateNotes}
+                  getToken={getToken}
                 />
               </div>
             </div>

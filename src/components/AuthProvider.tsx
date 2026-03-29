@@ -11,6 +11,7 @@ type AuthContext = {
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  getToken: () => Promise<string | null>;
 };
 
 const AuthCtx = createContext<AuthContext | null>(null);
@@ -54,8 +55,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     setUser(null);
   };
 
+  const getToken = async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token || null;
+  };
+
   return (
-    <AuthCtx.Provider value={{ user, supabase, loading, signIn, signUp, signOut }}>
+    <AuthCtx.Provider value={{ user, supabase, loading, signIn, signUp, signOut, getToken }}>
       {children}
     </AuthCtx.Provider>
   );

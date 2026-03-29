@@ -17,6 +17,7 @@
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vercel/analytics": "^2.0.1",
     "cheerio": "^1.2.0",
     "d3-force-3d": "^3.0.6",
     "framer-motion": "^12.38.0",

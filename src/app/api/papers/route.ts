@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { fetchArxivPaper } from "@/lib/arxiv";
+import { getUser } from "@/lib/auth";
 
 // GET all papers
 export async function GET(req: NextRequest) {
-  const userId = req.nextUrl.searchParams.get("user_id");
+  const user = await getUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = user.id;
 
   let query = supabase.from("papers").select("*").order("added_at", { ascending: false });
   if (userId) query = query.eq("user_id", userId);
@@ -22,8 +25,11 @@ export async function GET(req: NextRequest) {
 
 // POST - add a new paper (fast insert, no AI blocking)
 export async function POST(req: NextRequest) {
+  const user = await getUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
-  const { url, user_id } = body;
+  const { url } = body;
+  const user_id = user.id;
 
   if (!url) {
     return NextResponse.json({ error: "URL required" }, { status: 400 });
