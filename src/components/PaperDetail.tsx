@@ -417,13 +417,18 @@ export default function PaperDetail({
       {tab === "chat" && (
         <div className="p-4 border-t border-border shrink-0">
           <div className="flex gap-2">
-            <input
-              type="text"
+            <textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAsk()}
-              placeholder="Ask about this paper..."
-              className="flex-1 bg-bg border border-border px-3 py-2 text-xs text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleAsk();
+                }
+              }}
+              placeholder="Ask about this paper... (Shift+Enter for new line)"
+              rows={2}
+              className="flex-1 bg-bg border border-border px-3 py-2 text-xs text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover resize-none"
             />
             <button
               onClick={handleAsk}
