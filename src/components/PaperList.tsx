@@ -79,7 +79,7 @@ export default function PaperList({
           <button
             key={f}
             onClick={() => onFilterChange(f)}
-            className={`flex-1 px-3 py-2.5 text-[10px] tracking-[0.2em] uppercase transition-colors ${
+            className={`flex-1 px-2 py-2.5 text-[9px] tracking-[0.15em] uppercase whitespace-nowrap transition-colors ${
               filter === f
                 ? "text-accent border-b border-accent"
                 : "text-text-muted hover:text-text"
