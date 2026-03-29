@@ -20,54 +20,87 @@ function DitheredLogo() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    const size = 500;
-    canvas.width = size;
-    canvas.height = size;
+    const W = 600, H = 600;
+    canvas.width = W;
+    canvas.height = H;
 
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = "/graphene.png";
     img.onload = () => {
-      // Draw logo
       ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, size, size);
-      ctx.drawImage(img, 50, 50, size - 100, size - 100);
+      ctx.fillRect(0, 0, W, H);
 
-      // Get pixel data
-      const imageData = ctx.getImageData(0, 0, size, size);
-      const data = imageData.data;
+      // Bayer 4x4 dither matrix
+      const bayer = [
+        [0, 8, 2, 10],
+        [12, 4, 14, 6],
+        [3, 11, 1, 9],
+        [15, 7, 13, 5],
+      ];
 
-      // Dither effect (Floyd-Steinberg-ish)
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const i = (y * size + x) * 4;
-          const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      // Draw multiple receding layers for 3D tunnel effect
+      const layers = 8;
+      for (let layer = layers - 1; layer >= 0; layer--) {
+        const t = layer / layers;
+        const scale = 0.3 + t * 0.8;
+        const alpha = layer === 0 ? 1 : 0.15 + (1 - t) * 0.25;
+        const offset = layer * 3;
 
-          // Add noise for dither
-          const noise = (Math.random() - 0.5) * 80;
-          const val = avg + noise;
-          const newVal = val > 128 ? 255 : 0;
+        // Draw logo at this scale
+        const logoSize = W * scale;
+        const x = (W - logoSize) / 2 + offset;
+        const y = (H - logoSize) / 2 + offset;
 
-          data[i] = newVal;
-          data[i + 1] = newVal;
-          data[i + 2] = newVal;
-          data[i + 3] = Math.min(data[i + 3], newVal === 255 ? 200 : 30);
+        // Temp canvas for this layer
+        const tmp = document.createElement("canvas");
+        tmp.width = W;
+        tmp.height = H;
+        const tmpCtx = tmp.getContext("2d")!;
+        tmpCtx.fillStyle = "#000";
+        tmpCtx.fillRect(0, 0, W, H);
+        tmpCtx.drawImage(img, x, y, logoSize, logoSize);
+
+        // Get pixels and apply ordered dithering
+        const imgData = tmpCtx.getImageData(0, 0, W, H);
+        const px = imgData.data;
+        for (let py = 0; py < H; py++) {
+          for (let px2 = 0; px2 < W; px2++) {
+            const i = (py * W + px2) * 4;
+            const avg = (px[i] + px[i + 1] + px[i + 2]) / 3;
+
+            // Ordered dither threshold
+            const threshold = ((bayer[py % 4][px2 % 4]) / 16) * 255;
+            const on = avg > threshold;
+
+            if (on) {
+              px[i] = 255;
+              px[i + 1] = 255;
+              px[i + 2] = 255;
+              px[i + 3] = Math.round(alpha * 255);
+            } else {
+              px[i + 3] = 0;
+            }
+          }
         }
+        tmpCtx.putImageData(imgData, 0, 0);
+
+        // Composite onto main canvas
+        ctx.globalCompositeOperation = "screen";
+        ctx.drawImage(tmp, 0, 0);
       }
 
-      ctx.putImageData(imageData, 0, 0);
-
-      // Add glow layers
+      // Add soft glow
       ctx.globalCompositeOperation = "screen";
-      ctx.filter = "blur(20px)";
-      ctx.globalAlpha = 0.15;
+      ctx.filter = "blur(15px)";
+      ctx.globalAlpha = 0.12;
       ctx.drawImage(canvas, 0, 0);
-      ctx.filter = "blur(40px)";
-      ctx.globalAlpha = 0.1;
+      ctx.filter = "blur(30px)";
+      ctx.globalAlpha = 0.08;
       ctx.drawImage(canvas, 0, 0);
-      ctx.globalCompositeOperation = "source-over";
-      ctx.globalAlpha = 1;
       ctx.filter = "none";
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
     };
   }, []);
 
@@ -211,11 +244,11 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Big background text */}
-        <div className="max-w-6xl mx-auto mt-8 overflow-hidden h-[180px]">
+        {/* Big background text — clips at bottom only */}
+        <div className="w-full mt-8 overflow-hidden h-[120px]">
           <p
-            className="font-bold leading-none select-none text-white/[0.04]"
-            style={{ fontSize: "clamp(150px, 18vw, 280px)", letterSpacing: "-0.03em" }}
+            className="font-bold leading-none select-none text-white/[0.04] text-center w-full"
+            style={{ fontSize: "clamp(120px, 15vw, 220px)", letterSpacing: "-0.02em" }}
           >
             Graphene
           </p>
