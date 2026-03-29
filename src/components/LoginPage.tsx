@@ -2,7 +2,103 @@
 
 import { useAuth } from "./AuthProvider";
 import { ArrowRight, Shield, Zap, Brain, Map } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+
+function AsciiLogo() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animRef = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    const W = 500, H = 500;
+    canvas.width = W;
+    canvas.height = H;
+
+    // Load logo and sample it
+    const img = new Image();
+    img.src = "/graphene.png";
+    let logoPixels: Uint8ClampedArray | null = null;
+    const SAMPLE = 200;
+
+    img.onload = () => {
+      const tmp = document.createElement("canvas");
+      tmp.width = SAMPLE;
+      tmp.height = SAMPLE;
+      const tc = tmp.getContext("2d")!;
+      tc.drawImage(img, 0, 0, SAMPLE, SAMPLE);
+      logoPixels = tc.getImageData(0, 0, SAMPLE, SAMPLE).data;
+    };
+
+    const chars = " .,:;+*?%S#@";
+    const CELL = 8;
+    const cols = Math.floor(W / CELL);
+    const rows = Math.floor(H / CELL);
+
+    // Precompute random char offsets for shimmer
+    const charOffsets = new Float32Array(cols * rows);
+    for (let i = 0; i < charOffsets.length; i++) {
+      charOffsets[i] = Math.random() * Math.PI * 2;
+    }
+
+    let time = 0;
+
+    const render = () => {
+      time += 0.02;
+      ctx.clearRect(0, 0, W, H);
+
+      if (!logoPixels) {
+        animRef.current = requestAnimationFrame(render);
+        return;
+      }
+
+      ctx.font = `${CELL}px "JetBrains Mono", monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          // Map grid position to logo pixel
+          const lx = Math.floor((col / cols) * SAMPLE);
+          const ly = Math.floor((row / rows) * SAMPLE);
+          const idx = (ly * SAMPLE + lx) * 4;
+          const r = logoPixels[idx], g = logoPixels[idx + 1], b = logoPixels[idx + 2];
+          const brightness = (r + g + b) / 3;
+
+          // Logo is dark on white — invert: dark pixels = logo shape
+          const logoVal = 1 - brightness / 255;
+
+          if (logoVal < 0.1) continue; // skip background
+
+          // Animated shimmer
+          const shimmer = Math.sin(time * 2 + charOffsets[row * cols + col]) * 0.15;
+          const wave = Math.sin(col * 0.3 + time * 1.5) * 0.05 + Math.sin(row * 0.25 + time * 1.2) * 0.05;
+          const val = Math.max(0, Math.min(1, logoVal + shimmer + wave));
+
+          // Pick character based on brightness
+          const charIdx = Math.floor(val * (chars.length - 1));
+          const ch = chars[charIdx];
+
+          // Color: white with varying alpha
+          const alpha = 0.3 + val * 0.7;
+          ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+
+          const x = col * CELL + CELL / 2;
+          const y = row * CELL + CELL / 2;
+          ctx.fillText(ch, x, y);
+        }
+      }
+
+      animRef.current = requestAnimationFrame(render);
+    };
+
+    render();
+    return () => cancelAnimationFrame(animRef.current);
+  }, []);
+
+  return <canvas ref={canvasRef} className="w-[500px] h-[500px]" />;
+}
 
 export default function LoginPage() {
   const { signIn, signUp } = useAuth();
@@ -108,11 +204,9 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Right — logo */}
+            {/* Right — ASCII dithered logo */}
             <div className="flex items-center justify-center">
-              <div className="w-[500px] h-[500px] flex items-center justify-center">
-                <img src="/graphene.png" alt="Graphene" className="w-[450px] h-[450px] invert opacity-90" style={{ clipPath: "inset(4%)" }} />
-              </div>
+              <AsciiLogo />
             </div>
           </div>
         </div>
