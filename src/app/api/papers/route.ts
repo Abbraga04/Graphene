@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ paper: inserted });
     }
 
-    // Non-arXiv URL — insert immediately with URL as title
+    // Non-arXiv URL — download PDF and store in Supabase
     const id = `web-${Date.now()}`;
     const isPdf = url.toLowerCase().endsWith(".pdf") || url.includes("/pdf/");
 
@@ -82,6 +82,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ paper: existing, alreadyExists: true }, { status: 200 });
     }
 
+    // Download and upload PDF to Supabase Storage
+    let storedPdfUrl = isPdf ? url : null;
+    if (isPdf) {
+      try {
+        const pdfRes = await fetch(url);
+        if (pdfRes.ok) {
+          const buffer = Buffer.from(await pdfRes.arrayBuffer());
+          const fileName = `${id}.pdf`;
+          await supabase.storage.from("papers").upload(fileName, buffer, {
+            contentType: "application/pdf",
+            upsert: true,
+          });
+          const { data: publicUrl } = supabase.storage.from("papers").getPublicUrl(fileName);
+          storedPdfUrl = publicUrl.publicUrl;
+        }
+      } catch (e) {
+        console.error("PDF upload failed:", e);
+      }
+    }
+
     const { data: inserted, error: insertError } = await supabase
       .from("papers")
       .insert({
@@ -89,7 +109,7 @@ export async function POST(req: NextRequest) {
         title: url.split("/").pop() || url,
         authors: [],
         source_url: url,
-        pdf_url: isPdf ? url : null,
+        pdf_url: storedPdfUrl,
         categories: [],
       })
       .select()
