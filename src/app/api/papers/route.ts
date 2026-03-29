@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { fetchArxivPaper } from "@/lib/arxiv";
-import { summarizePaper, findConnections } from "@/lib/ai";
+import { summarizePaper, findConnections, extractPaperMetadata } from "@/lib/ai";
 
 // GET all papers
 export async function GET() {
@@ -107,23 +107,140 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ paper: inserted });
     }
 
-    // For non-arxiv URLs, create a basic entry
+    // For any other URL — try to fetch and extract
     const id = `web-${Date.now()}`;
+    const isPdf = url.toLowerCase().endsWith(".pdf") || url.includes("/pdf/");
+
+    let title = url;
+    let authors: string[] = [];
+    let abstract: string | null = null;
+    let categories: string[] = [];
+    let published: string | null = null;
+    let summary: string | null = null;
+
+    if (isPdf) {
+      try {
+        // Fetch the PDF
+        const pdfRes = await fetch(url);
+        if (!pdfRes.ok) throw new Error(`Failed to fetch PDF: ${pdfRes.status}`);
+        const buffer = Buffer.from(await pdfRes.arrayBuffer());
+        const pdfParse = await import("pdf-parse");
+        const parse = typeof pdfParse === "function" ? pdfParse : (pdfParse as { default: typeof import("pdf-parse") }).default;
+        const pdfData = await (parse as (buf: Buffer) => Promise<{ text: string }>)(buffer);
+        const text = pdfData.text;
+
+        // Use AI to extract metadata
+        const metadata = await extractPaperMetadata(text);
+        title = metadata.title;
+        authors = metadata.authors;
+        abstract = metadata.abstract;
+        categories = metadata.categories;
+        published = metadata.published;
+
+        // Generate summary
+        try {
+          summary = await summarizePaper(title, abstract || text.slice(0, 2000));
+        } catch (e) {
+          console.error("Summary generation failed:", e);
+        }
+      } catch (e) {
+        console.error("PDF extraction failed:", e);
+        // Fall back to just storing the URL
+      }
+    } else {
+      // Regular webpage — try to fetch and extract text
+      try {
+        const pageRes = await fetch(url);
+        const html = await pageRes.text();
+        // Extract title from HTML
+        const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+        if (titleMatch) title = titleMatch[1].trim();
+
+        // Try to extract any meaningful text
+        const bodyText = html
+          .replace(/<script[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[\s\S]*?<\/style>/gi, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 5000);
+
+        if (bodyText.length > 100) {
+          const metadata = await extractPaperMetadata(bodyText);
+          if (metadata.title !== "Untitled") title = metadata.title;
+          authors = metadata.authors;
+          abstract = metadata.abstract;
+          categories = metadata.categories;
+          published = metadata.published;
+
+          try {
+            summary = await summarizePaper(title, abstract || bodyText.slice(0, 2000));
+          } catch (e) {
+            console.error("Summary generation failed:", e);
+          }
+        }
+      } catch (e) {
+        console.error("Page fetch failed:", e);
+      }
+    }
+
+    // Check if already exists by URL
+    const { data: existing } = await supabase
+      .from("papers")
+      .select("id")
+      .eq("source_url", url)
+      .single();
+
+    if (existing) {
+      return NextResponse.json({ error: "Paper already added", paper: existing }, { status: 409 });
+    }
+
     const { data: inserted, error: insertError } = await supabase
       .from("papers")
       .insert({
         id,
-        title: url,
-        authors: [],
+        title,
+        authors,
+        abstract,
+        published,
         source_url: url,
-        pdf_url: url,
-        categories: [],
+        pdf_url: isPdf ? url : null,
+        categories,
+        summary,
       })
       .select()
       .single();
 
     if (insertError) {
       return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
+
+    // Find connections to existing papers
+    try {
+      const { data: existingPapers } = await supabase
+        .from("papers")
+        .select("id, title, abstract, categories")
+        .neq("id", id);
+
+      if (existingPapers && existingPapers.length > 0 && abstract) {
+        const connections = await findConnections(
+          { title, abstract, categories },
+          existingPapers
+        );
+
+        if (connections.length > 0) {
+          await supabase.from("paper_connections").insert(
+            connections.map((c) => ({
+              paper_a: id,
+              paper_b: c.paperId,
+              strength: c.strength,
+              relation_type: c.relationType,
+            }))
+          );
+        }
+      }
+    } catch (e) {
+      console.error("Connection finding failed:", e);
     }
 
     return NextResponse.json({ paper: inserted });

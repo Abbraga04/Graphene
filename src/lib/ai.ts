@@ -55,6 +55,62 @@ ${summary ? `Summary: ${summary}` : ""}`;
   return block.type === "text" ? block.text : "";
 }
 
+export type ExtractedPaper = {
+  title: string;
+  authors: string[];
+  abstract: string;
+  categories: string[];
+  published: string | null;
+};
+
+export async function extractPaperMetadata(text: string): Promise<ExtractedPaper> {
+  const truncated = text.slice(0, 8000);
+  const message = await client.messages.create({
+    model: "claude-opus-4-6",
+    max_tokens: 1024,
+    messages: [
+      {
+        role: "user",
+        content: `Extract paper metadata from this text. Return ONLY valid JSON with these fields:
+{
+  "title": "the paper title",
+  "authors": ["author1", "author2"],
+  "abstract": "the abstract or a summary if no explicit abstract",
+  "categories": ["field1", "field2"],
+  "published": "YYYY-MM-DD or null if unknown"
+}
+
+Text:
+${truncated}`,
+      },
+    ],
+  });
+
+  const block = message.content[0];
+  const responseText = block.type === "text" ? block.text : "{}";
+
+  try {
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found");
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      title: parsed.title || "Untitled",
+      authors: parsed.authors || [],
+      abstract: parsed.abstract || "",
+      categories: parsed.categories || [],
+      published: parsed.published || null,
+    };
+  } catch {
+    return {
+      title: "Untitled",
+      authors: [],
+      abstract: text.slice(0, 500),
+      categories: [],
+      published: null,
+    };
+  }
+}
+
 export async function findConnections(
   newPaper: { title: string; abstract: string; categories: string[] },
   existingPapers: { id: string; title: string; abstract: string; categories: string[] }[]
