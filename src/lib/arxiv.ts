@@ -17,7 +17,12 @@ export async function searchArxiv(query: string, maxResults = 10): Promise<Arxiv
 }
 
 export async function fetchArxivPaper(arxivId: string): Promise<ArxivResult | null> {
-  const cleanId = arxivId.replace("arXiv:", "").replace("https://arxiv.org/abs/", "").replace("https://arxiv.org/pdf/", "").replace(".pdf", "");
+  const cleanId = arxivId
+    .replace("arXiv:", "")
+    .replace(/https?:\/\/arxiv\.org\/(abs|pdf|html|labs)\//, "")
+    .replace(/\.pdf$/, "")
+    .replace(/v\d+$/, "")
+    .trim();
   const url = `http://export.arxiv.org/api/query?id_list=${cleanId}`;
   const res = await fetch(url);
   const text = await res.text();
