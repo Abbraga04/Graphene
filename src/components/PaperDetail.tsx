@@ -99,8 +99,13 @@ export default function PaperDetail({
             <h2 className="text-sm font-medium text-accent leading-tight">
               {paper.title}
             </h2>
-            <p className="text-[10px] text-text mt-1">
-              {(paper.authors as string[])?.join(", ")}
+            <p className="text-[10px] text-text mt-1 line-clamp-2">
+              {(() => {
+                const authors = paper.authors as string[];
+                if (!authors || authors.length === 0) return "Unknown";
+                if (authors.length <= 5) return authors.join(", ");
+                return authors.slice(0, 5).join(", ") + ` +${authors.length - 5} more`;
+              })()}
             </p>
           </div>
           <button
