@@ -5,7 +5,7 @@ import { Paper } from "@/lib/supabase";
 import { humanCategory } from "@/lib/categories";
 import { Check, Clock, ChevronRight, ChevronDown, ArrowUpDown } from "lucide-react";
 
-type SortOption = "newest" | "oldest" | "published_new" | "published_old" | "title" | "recently_read" | "most_legit" | "most_interesting";
+type SortOption = "newest" | "oldest" | "published_new" | "published_old" | "title" | "recently_read" | "most_legit" | "least_legit" | "most_interesting" | "least_interesting";
 type ReadFilter = "all" | "read" | "unread";
 
 export default function PaperList({
@@ -67,15 +67,17 @@ export default function PaperList({
           if (a.read_at) return -1;
           if (b.read_at) return 1;
           return new Date(b.added_at).getTime() - new Date(a.added_at).getTime();
-        case "most_legit": {
-          const aL = 100 - ((a as any).bs_score?.overall ?? 100);
-          const bL = 100 - ((b as any).bs_score?.overall ?? 100);
-          return bL - aL;
+        case "most_legit":
+        case "least_legit": {
+          const aL = 100 - ((a as any).bs_score?.overall ?? 50);
+          const bL = 100 - ((b as any).bs_score?.overall ?? 50);
+          return sort === "most_legit" ? bL - aL : aL - bL;
         }
-        case "most_interesting": {
-          const aI = (a as any).bs_score?.interesting ?? 0;
-          const bI = (b as any).bs_score?.interesting ?? 0;
-          return bI - aI;
+        case "most_interesting":
+        case "least_interesting": {
+          const aI = (a as any).bs_score?.interesting ?? 50;
+          const bI = (b as any).bs_score?.interesting ?? 50;
+          return sort === "most_interesting" ? bI - aI : aI - bI;
         }
         default:
           return 0;
@@ -112,7 +114,7 @@ export default function PaperList({
         >
           <span className="flex items-center gap-1.5">
             <ArrowUpDown size={10} />
-            {{ newest: "Added: New", oldest: "Added: Old", published_new: "Published: New", published_old: "Published: Old", title: "A-Z", recently_read: "Last read", most_legit: "Most Legit", most_interesting: "Most Interesting" }[sort]}
+            {{ newest: "Added: New", oldest: "Added: Old", published_new: "Published: New", published_old: "Published: Old", title: "A-Z", recently_read: "Last read", most_legit: "Most Legit", least_legit: "Most BS", most_interesting: "Most Interesting", least_interesting: "Least Interesting" }[sort]}
             {selectedCategory && ` / ${humanCategory(selectedCategory)}`}
           </span>
           <ChevronDown size={10} className={`transition-transform ${showFilters ? "rotate-180" : ""}`} />
@@ -131,7 +133,9 @@ export default function PaperList({
                   ["published_old", "Published: Old"],
                   ["title", "A-Z"],
                   ["most_legit", "Most Legit"],
+                  ["least_legit", "Most BS"],
                   ["most_interesting", "Most Interesting"],
+                  ["least_interesting", "Least Interesting"],
                   ["recently_read", "Last read"],
                 ] as [SortOption, string][]).map(([value, label]) => (
                   <button
