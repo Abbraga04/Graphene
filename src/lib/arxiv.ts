@@ -28,25 +28,11 @@ export async function fetchArxivPaper(arxivId: string): Promise<ArxivResult | nu
     .replace(/v\d+$/, "")
     .trim();
 
-  // Try API first (with timeout)
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
-    try {
-      const url = `https://export.arxiv.org/api/query?id_list=${cleanId}`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-      const text = await res.text();
-      if (text.includes("Rate exceeded")) continue;
-      const results = parseArxivXml(text);
-      if (results.length > 0) return results[0];
-    } catch {
-      // timeout or network error
-    }
-  }
-
-  // Fallback: scrape the abs page directly
+  // Scrape the abs page directly — no API needed, no rate limits
   try {
     const absUrl = `https://arxiv.org/abs/${cleanId}`;
     const res = await fetch(absUrl, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
     const html = await res.text();
     return scrapeAbsPage(cleanId, html);
   } catch {
