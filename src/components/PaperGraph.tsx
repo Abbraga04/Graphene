@@ -161,7 +161,7 @@ export default function PaperGraph({
       const fs = Math.max(8 / globalScale, 2.5);
       ctx.font = `${fs}px JetBrains Mono, monospace`;
       const short = node.title.length > 20 ? node.title.slice(0, 20) + "..." : node.title;
-      ctx.fillStyle = "#666";
+      ctx.fillStyle = "#bbb";
       ctx.fillText(short, x, y + r + fs + 1);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
