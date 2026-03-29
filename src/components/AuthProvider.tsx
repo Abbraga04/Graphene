@@ -8,8 +8,8 @@ type AuthContext = {
   user: User | null;
   supabase: SupabaseClient;
   loading: boolean;
-  signInWithGithub: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signUp: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 };
 
@@ -39,18 +39,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  const signInWithGithub = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "github",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error?.message };
   };
 
-  const signInWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
+  const signUp = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({ email, password });
+    return { error: error?.message };
   };
 
   const signOut = async () => {
@@ -59,7 +55,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   };
 
   return (
-    <AuthCtx.Provider value={{ user, supabase, loading, signInWithGithub, signInWithGoogle, signOut }}>
+    <AuthCtx.Provider value={{ user, supabase, loading, signIn, signUp, signOut }}>
       {children}
     </AuthCtx.Provider>
   );
