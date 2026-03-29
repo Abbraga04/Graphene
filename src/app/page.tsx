@@ -71,7 +71,11 @@ export default function Home() {
 
   // Add paper
   const handleAddPaper = async (url: string) => {
+    // Close modal immediately and show loading state
+    setShowAddModal(false);
+    setView("list");
     setAdding(true);
+
     try {
       const res = await fetch("/api/papers", {
         method: "POST",
@@ -81,18 +85,18 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      // Immediately show the paper
+      // Show the paper
       await fetchPapers();
       setSelectedPaperId(data.paper.id);
       setSelectedPaper(data.paper);
       setChatMessages([]);
-      setShowAddModal(false);
-      setView("list");
 
       // Enrich in the background (summary, connections) with streaming
       if (!data.alreadyExists) {
         enrichPaper(data.paper.id);
       }
+    } catch (e) {
+      console.error("Failed to add paper:", e);
     } finally {
       setAdding(false);
     }
@@ -211,7 +215,14 @@ export default function Home() {
             Graphene
           </span>
           <span className="text-xs text-text-dim tracking-wider ml-2 hidden sm:inline">
-            {stats.total} papers / {stats.read} read / {stats.connections} links
+            {adding ? (
+              <span className="flex items-center gap-2">
+                <Loader2 size={10} className="animate-spin" />
+                Adding paper...
+              </span>
+            ) : (
+              <>{stats.total} papers / {stats.read} read / {stats.connections} links</>
+            )}
           </span>
         </div>
 
