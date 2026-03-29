@@ -40,28 +40,59 @@ export async function POST(
   let categories = paper.categories || [];
   let published = paper.published;
 
-  if (isWebPaper && paper.pdf_url) {
-    try {
-      const pdfRes = await fetch(paper.pdf_url);
-      if (pdfRes.ok) {
-        const buffer = Buffer.from(await pdfRes.arrayBuffer());
-        const pdfParse = await import("pdf-parse");
-        const parse =
-          typeof pdfParse === "function"
-            ? pdfParse
-            : (pdfParse as { default: Function }).default;
-        const pdfData = await (
-          parse as (buf: Buffer) => Promise<{ text: string }>
-        )(buffer);
+  if (isWebPaper) {
+    let extractedText = "";
+    const sourceUrl = paper.source_url || paper.pdf_url;
 
-        // Extract metadata with Claude
+    // Try HTML scraping first (faster, preserves structure)
+    if (sourceUrl && !sourceUrl.toLowerCase().endsWith(".pdf")) {
+      try {
+        const pageRes = await fetch(sourceUrl);
+        if (pageRes.ok) {
+          const html = await pageRes.text();
+          extractedText = html
+            .replace(/<script[\s\S]*?<\/script>/gi, "")
+            .replace(/<style[\s\S]*?<\/style>/gi, "")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        }
+      } catch (e) {
+        console.error("HTML scraping failed:", e);
+      }
+    }
+
+    // Fall back to PDF parsing if no usable HTML
+    if (extractedText.length < 200 && paper.pdf_url) {
+      try {
+        const pdfRes = await fetch(paper.pdf_url);
+        if (pdfRes.ok) {
+          const buffer = Buffer.from(await pdfRes.arrayBuffer());
+          const pdfParse = await import("pdf-parse");
+          const parse =
+            typeof pdfParse === "function"
+              ? pdfParse
+              : (pdfParse as { default: Function }).default;
+          const pdfData = await (
+            parse as (buf: Buffer) => Promise<{ text: string }>
+          )(buffer);
+          extractedText = pdfData.text;
+        }
+      } catch (e) {
+        console.error("PDF parsing failed:", e);
+      }
+    }
+
+    // Extract metadata with Claude
+    if (extractedText.length > 100) {
+      try {
         const metaMsg = await client.messages.create({
           model: "claude-opus-4-6",
           max_tokens: 512,
           messages: [
             {
               role: "user",
-              content: `Extract metadata from this paper. Return ONLY JSON: {"title":"...","authors":["..."],"abstract":"...","categories":["..."],"published":"YYYY-MM-DD or null"}\n\n${pdfData.text.slice(0, 6000)}`,
+              content: `Extract metadata from this paper/article. Return ONLY JSON: {"title":"...","authors":["..."],"abstract":"...","categories":["..."],"published":"YYYY-MM-DD or null"}\n\n${extractedText.slice(0, 6000)}`,
             },
           ],
         });
@@ -76,15 +107,14 @@ export async function POST(
           categories = meta.categories || categories;
           published = meta.published || published;
 
-          // Update paper with extracted metadata
           await supabase
             .from("papers")
             .update({ title, authors, abstract, categories, published })
             .eq("id", id);
         }
+      } catch (e) {
+        console.error("Metadata extraction failed:", e);
       }
-    } catch (e) {
-      console.error("PDF metadata extraction failed:", e);
     }
   }
 
