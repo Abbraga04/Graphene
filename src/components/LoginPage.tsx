@@ -6,9 +6,10 @@ import { useState } from "react";
 
 export default function LoginPage() {
   const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"landing" | "signin" | "signup">("landing");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
@@ -18,6 +19,12 @@ export default function LoginPage() {
     setError("");
     setSuccess("");
     setLoading(true);
+
+    if (mode === "signup" && password !== confirmPassword) {
+      setError("Passwords don't match");
+      setLoading(false);
+      return;
+    }
 
     const result = mode === "signin"
       ? await signIn(email, password)
@@ -80,44 +87,24 @@ export default function LoginPage() {
                 built-in legitness detector.
               </p>
 
-              {/* Email/Password form */}
-              <form onSubmit={handleSubmit} className="max-w-sm space-y-3 mb-4">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email"
-                  required
-                  className="w-full bg-bg border border-border px-4 py-3 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
-                />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  required
-                  minLength={6}
-                  className="w-full bg-bg border border-border px-4 py-3 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-accent text-bg text-xs font-medium tracking-wider uppercase hover:bg-text transition-colors disabled:opacity-50"
+              <div className="flex items-center gap-3">
+                <a
+                  href="https://github.com/lance116/Graphene"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-6 py-3 bg-accent text-bg text-xs font-medium tracking-wider uppercase hover:bg-text transition-colors"
                 >
-                  {loading ? "..." : mode === "signin" ? "Log in" : "Create account"}
-                  <ArrowRight size={14} />
+                  Star on GitHub <ArrowRight size={14} />
+                </a>
+                <button
+                  onClick={() => setMode("signin")}
+                  className="flex items-center gap-2 px-6 py-3 border border-border text-text text-xs font-medium tracking-wider uppercase hover:bg-surface-2 transition-colors"
+                >
+                  Log in
                 </button>
-              </form>
-
-              {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
-              {success && <p className="text-xs text-green-400 mb-2">{success}</p>}
-
-              <p className="text-[10px] text-text-dim">
-                {mode === "signin" ? (
-                  <>No account? <button onClick={() => setMode("signup")} className="text-text hover:underline">Sign up</button></>
-                ) : (
-                  <>Already have an account? <button onClick={() => setMode("signin")} className="text-text hover:underline">Log in</button></>
-                )}
+              </div>
+              <p className="text-[10px] text-text-dim mt-3">
+                Free and open source. Self-host with your own API key.
               </p>
             </div>
 
@@ -167,6 +154,102 @@ export default function LoginPage() {
           </p>
         </div>
       </footer>
+      {/* Login Modal */}
+      {mode === "signin" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-surface border border-border p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-sm font-bold tracking-[0.2em] uppercase text-accent">Log in</h2>
+              <button onClick={() => setMode("landing")} className="text-xs text-text-dim hover:text-text text-lg">&times;</button>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                required
+                autoFocus
+                className="w-full bg-bg border border-border px-4 py-3 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                required
+                minLength={6}
+                className="w-full bg-bg border border-border px-4 py-3 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-accent text-bg text-xs font-medium tracking-wider uppercase hover:bg-text transition-colors disabled:opacity-50"
+              >
+                {loading ? "..." : "Log in"}
+              </button>
+            </form>
+            {error && <p className="text-xs text-red-400 mt-3">{error}</p>}
+            {success && <p className="text-xs text-green-400 mt-3">{success}</p>}
+            <p className="text-[10px] text-text-dim mt-4">
+              No account? <button onClick={() => { setMode("signup"); }} className="text-text hover:underline">Sign up</button>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Signup Modal */}
+      {mode === "signup" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-surface border border-border p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-sm font-bold tracking-[0.2em] uppercase text-accent">Sign up</h2>
+              <button onClick={() => setMode("landing")} className="text-xs text-text-dim hover:text-text text-lg">&times;</button>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                required
+                autoFocus
+                className="w-full bg-bg border border-border px-4 py-3 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password (min 6 characters)"
+                required
+                minLength={6}
+                className="w-full bg-bg border border-border px-4 py-3 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
+              />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                required
+                minLength={6}
+                className="w-full bg-bg border border-border px-4 py-3 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-accent text-bg text-xs font-medium tracking-wider uppercase hover:bg-text transition-colors disabled:opacity-50"
+              >
+                {loading ? "..." : "Create account"}
+              </button>
+            </form>
+            {error && <p className="text-xs text-red-400 mt-3">{error}</p>}
+            {success && <p className="text-xs text-green-400 mt-3">{success}</p>}
+            <p className="text-[10px] text-text-dim mt-4">
+              Already have an account? <button onClick={() => setMode("signin")} className="text-text hover:underline">Log in</button>
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
