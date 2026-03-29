@@ -4,63 +4,39 @@ import { useRef, useCallback, useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Paper, PaperConnection } from "@/lib/supabase";
 
-const ForceGraph3D = dynamic(() => import("react-force-graph-3d"), { ssr: false });
+const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
 
-const CLUSTER_COLORS = [
-  "#8b9cf7", "#f7a08b", "#8bf7c4", "#f7e88b",
-  "#c98bf7", "#8bd4f7", "#f78bb8", "#b8f78b",
-  "#f7c68b", "#8bf7f0", "#d4f78b", "#f78b8b",
+const CLUSTER_COLORS: Record<string, { fill: string; stroke: string; node: string }> = {};
+const COLOR_PALETTE = [
+  { fill: "rgba(99,130,255,0.07)", stroke: "rgba(99,130,255,0.25)", node: "#6382ff" },
+  { fill: "rgba(255,130,99,0.07)", stroke: "rgba(255,130,99,0.25)", node: "#ff8263" },
+  { fill: "rgba(99,255,170,0.07)", stroke: "rgba(99,255,170,0.25)", node: "#63ffaa" },
+  { fill: "rgba(255,220,99,0.07)", stroke: "rgba(255,220,99,0.25)", node: "#ffdc63" },
+  { fill: "rgba(190,99,255,0.07)", stroke: "rgba(190,99,255,0.25)", node: "#be63ff" },
+  { fill: "rgba(99,210,255,0.07)", stroke: "rgba(99,210,255,0.25)", node: "#63d2ff" },
+  { fill: "rgba(255,99,170,0.07)", stroke: "rgba(255,99,170,0.25)", node: "#ff63aa" },
+  { fill: "rgba(170,255,99,0.07)", stroke: "rgba(170,255,99,0.25)", node: "#aaff63" },
 ];
 
-type GraphNode = {
+let colorIdx = 0;
+function getClusterColor(cat: string) {
+  if (!CLUSTER_COLORS[cat]) {
+    CLUSTER_COLORS[cat] = COLOR_PALETTE[colorIdx % COLOR_PALETTE.length];
+    colorIdx++;
+  }
+  return CLUSTER_COLORS[cat];
+}
+
+type GNode = {
   id: string;
   title: string;
-  category: string;
-  clusterIdx: number;
+  categories: string[];
+  primaryCat: string;
   isRead: boolean;
   val: number;
-  color: string;
+  x?: number;
+  y?: number;
 };
-
-type GraphLink = {
-  source: string;
-  target: string;
-  strength: number;
-};
-
-function buildGraphData(papers: Paper[], connections: PaperConnection[]) {
-  const categoryMap = new Map<string, number>();
-  let idx = 0;
-
-  const nodes: GraphNode[] = papers.map((p) => {
-    const cats = p.categories as string[];
-    const primaryCat = cats?.[0] || "Uncategorized";
-    if (!categoryMap.has(primaryCat)) {
-      categoryMap.set(primaryCat, idx++);
-    }
-    const clusterIdx = categoryMap.get(primaryCat)!;
-    return {
-      id: p.id,
-      title: p.title,
-      category: primaryCat,
-      clusterIdx,
-      isRead: p.is_read,
-      val: 6,
-      color: CLUSTER_COLORS[clusterIdx % CLUSTER_COLORS.length],
-    };
-  });
-
-  const nodeIds = new Set(papers.map((p) => p.id));
-  const links: GraphLink[] = connections
-    .filter((c) => nodeIds.has(c.paper_a) && nodeIds.has(c.paper_b))
-    .map((c) => ({
-      source: c.paper_a,
-      target: c.paper_b,
-      strength: c.strength,
-    }));
-
-  return { nodes, links };
-}
 
 export default function PaperGraph({
   papers,
@@ -91,7 +67,42 @@ export default function PaperGraph({
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  const graphData = useMemo(() => buildGraphData(papers, connections), [papers, connections]);
+  const graphData = useMemo(() => {
+    // Reset colors on rebuild
+    colorIdx = 0;
+    Object.keys(CLUSTER_COLORS).forEach((k) => delete CLUSTER_COLORS[k]);
+
+    const nodes: GNode[] = papers.map((p) => {
+      const cats = (p.categories as string[]) || [];
+      const primaryCat = cats[0] || "Uncategorized";
+      getClusterColor(primaryCat);
+      return {
+        id: p.id,
+        title: p.title,
+        categories: cats,
+        primaryCat,
+        isRead: p.is_read,
+        val: 5,
+      };
+    });
+
+    const nodeIds = new Set(papers.map((p) => p.id));
+    const links = connections
+      .filter((c) => nodeIds.has(c.paper_a) && nodeIds.has(c.paper_b))
+      .map((c) => ({ source: c.paper_a, target: c.paper_b }));
+
+    return { nodes, links };
+  }, [papers, connections]);
+
+  // Zoom to fit after layout settles
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (graphRef.current) {
+        graphRef.current.zoomToFit(400, 80);
+      }
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [graphData]);
 
   const handleNodeClick = useCallback(
     (node: any) => {
@@ -100,52 +111,86 @@ export default function PaperGraph({
     [onSelectPaper]
   );
 
-  // Create text sprite for node labels
-  const nodeThreeObject = useCallback(
-    (node: any) => {
-      const THREE = require("three");
-      const group = new THREE.Group();
+  // Draw venn diagram regions behind nodes
+  const paintBefore = useCallback(
+    (ctx: CanvasRenderingContext2D, globalScale: number) => {
+      // Group nodes by primary category
+      const clusters = new Map<string, { x: number; y: number }[]>();
+      for (const node of graphData.nodes) {
+        if (node.x == null || node.y == null) continue;
+        const pts = clusters.get(node.primaryCat) || [];
+        pts.push({ x: node.x, y: node.y });
+        clusters.set(node.primaryCat, pts);
+      }
 
-      // Sphere
-      const isSelected = node.id === selectedPaperId;
-      const geo = new THREE.SphereGeometry(isSelected ? 3 : 2, 16, 16);
-      const mat = new THREE.MeshLambertMaterial({
-        color: node.color,
-        emissive: node.color,
-        emissiveIntensity: isSelected ? 0.5 : 0.15,
-        transparent: true,
-        opacity: node.isRead ? 1 : 0.7,
+      clusters.forEach((points, cat) => {
+        if (points.length === 0) return;
+        const color = getClusterColor(cat);
+
+        // Calculate center and radius
+        const cx = points.reduce((s, p) => s + p.x, 0) / points.length;
+        const cy = points.reduce((s, p) => s + p.y, 0) / points.length;
+        let maxDist = 0;
+        for (const p of points) {
+          const d = Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2);
+          if (d > maxDist) maxDist = d;
+        }
+        const radius = Math.max(maxDist + 35, 50);
+
+        // Draw filled circle (venn region)
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = color.fill;
+        ctx.fill();
+        ctx.strokeStyle = color.stroke;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Category label
+        const fontSize = Math.max(14 / globalScale, 5);
+        ctx.font = `600 ${fontSize}px JetBrains Mono, monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = color.stroke;
+        ctx.fillText(cat.toUpperCase(), cx, cy - radius + fontSize + 2);
       });
-      const sphere = new THREE.Mesh(geo, mat);
-      group.add(sphere);
+    },
+    [graphData.nodes]
+  );
 
-      // Label sprite
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d")!;
-      canvas.width = 1024;
-      canvas.height = 128;
-      ctx.clearRect(0, 0, 1024, 128);
+  // Custom node rendering
+  const paintNode = useCallback(
+    (node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      const x = node.x as number;
+      const y = node.y as number;
+      const isSelected = node.id === selectedPaperId;
+      const color = getClusterColor(node.primaryCat);
+      const r = isSelected ? 6 : 4;
+
+      // Glow
+      if (isSelected) {
+        ctx.beginPath();
+        ctx.arc(x, y, r + 3, 0, 2 * Math.PI);
+        ctx.fillStyle = color.fill.replace("0.07", "0.3");
+        ctx.fill();
+      }
+
+      // Node dot
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, 2 * Math.PI);
+      ctx.fillStyle = isSelected ? "#ffffff" : node.isRead ? color.node : color.node + "99";
+      ctx.fill();
 
       // Title
-      ctx.font = "bold 28px JetBrains Mono, monospace";
-      ctx.fillStyle = isSelected ? "#ffffff" : "#cccccc";
+      const fontSize = Math.max(9 / globalScale, 2.5);
+      ctx.font = `${fontSize}px JetBrains Mono, monospace`;
       ctx.textAlign = "center";
-      const label = node.title.length > 50 ? node.title.slice(0, 50) + "..." : node.title;
-      ctx.fillText(label, 512, 45);
-
-      // Category
-      ctx.font = "20px JetBrains Mono, monospace";
-      ctx.fillStyle = node.color;
-      ctx.fillText(node.category, 512, 85);
-
-      const texture = new THREE.CanvasTexture(canvas);
-      const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
-      const sprite = new THREE.Sprite(spriteMat);
-      sprite.scale.set(40, 5, 1);
-      sprite.position.set(0, 5, 0);
-      group.add(sprite);
-
-      return group;
+      ctx.textBaseline = "top";
+      const label = node.title.length > 35 ? node.title.slice(0, 35) + "..." : node.title;
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillText(label, x + 0.3, y + r + 2.5 + 0.3);
+      ctx.fillStyle = isSelected ? "#ffffff" : "#bbbbbb";
+      ctx.fillText(label, x, y + r + 2.5);
     },
     [selectedPaperId]
   );
@@ -164,33 +209,26 @@ export default function PaperGraph({
 
   return (
     <div ref={containerRef} className="w-full h-full" style={{ background: "#000" }}>
-      <ForceGraph3D
+      <ForceGraph2D
         ref={graphRef}
         width={dimensions.width}
         height={dimensions.height}
         graphData={graphData}
-        nodeThreeObject={nodeThreeObject}
-        nodeThreeObjectExtend={false}
-        onNodeClick={handleNodeClick}
-        onEngineStop={() => {
-          if (graphRef.current) {
-            graphRef.current.zoomToFit(500, 60);
-          }
+        nodeCanvasObject={paintNode}
+        nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D) => {
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, 10, 0, 2 * Math.PI);
+          ctx.fillStyle = color;
+          ctx.fill();
         }}
-        linkColor={() => "#333333"}
-        linkWidth={(link: any) => (link.strength || 0.5) * 1.5}
-        linkOpacity={0.3}
+        onNodeClick={handleNodeClick}
+        onRenderFramePre={paintBefore}
+        linkColor={() => "rgba(255,255,255,0.08)"}
+        linkWidth={1}
         backgroundColor="#000000"
-        showNavInfo={false}
         cooldownTime={2000}
         d3AlphaDecay={0.03}
         d3VelocityDecay={0.4}
-        d3Force="charge"
-        d3ForceConfig={{
-          charge: { strength: -30, distanceMax: 80 },
-          link: { distance: 20 },
-          center: { strength: 1.5 },
-        }}
       />
     </div>
   );
