@@ -121,42 +121,44 @@ export default function LoginPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border px-8 pt-12 pb-24 relative overflow-hidden">
-        <div className="max-w-6xl mx-auto flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <img src="/graphene.png" alt="Graphene" className="w-5 h-5 invert" />
-              <span className="text-xs font-bold tracking-[0.2em] uppercase text-text-dim">Graphene</span>
-            </div>
-            <p className="text-[10px] text-text-dim">
-              &copy; {new Date().getFullYear()} Graphene. Open source under MIT.
-            </p>
-          </div>
-          <div className="flex gap-16">
+      <footer className="relative overflow-hidden bg-surface">
+        {/* Top gradient fade */}
+        <div className="h-24 bg-gradient-to-b from-bg to-surface" />
+
+        <div className="max-w-6xl mx-auto px-8 pt-8 pb-8">
+          <div className="flex items-start justify-between">
             <div>
-              <h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-text-dim mb-3">Project</h4>
-              <div className="space-y-2">
-                <a href="https://github.com/lance116/Graphene" target="_blank" rel="noopener noreferrer" className="block text-xs text-text-dim hover:text-text transition-colors">GitHub</a>
-                <a href="https://github.com/lance116/Graphene/issues" target="_blank" rel="noopener noreferrer" className="block text-xs text-text-dim hover:text-text transition-colors">Issues</a>
-                <a href="https://github.com/lance116/Graphene/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="block text-xs text-text-dim hover:text-text transition-colors">License</a>
+              <img src="/graphene.png" alt="Graphene" className="w-7 h-7 invert mb-4" style={{ clipPath: "inset(4%)" }} />
+              <p className="text-xs text-text-dim">
+                &copy; {new Date().getFullYear()} Graphene. All rights reserved.
+              </p>
+            </div>
+            <div className="flex gap-20">
+              <div>
+                <h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-text-dim mb-4">Project</h4>
+                <div className="space-y-3">
+                  <a href="https://github.com/lance116/Graphene" target="_blank" rel="noopener noreferrer" className="block text-sm text-text-dim hover:text-text transition-colors">GitHub</a>
+                  <a href="https://github.com/lance116/Graphene/issues" target="_blank" rel="noopener noreferrer" className="block text-sm text-text-dim hover:text-text transition-colors">Issues</a>
+                  <a href="https://github.com/lance116/Graphene/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="block text-sm text-text-dim hover:text-text transition-colors">License</a>
+                </div>
               </div>
-            </div>
-            <div>
-              <h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-text-dim mb-3">Stack</h4>
-              <div className="space-y-2">
-                <span className="block text-xs text-text-dim">Next.js</span>
-                <span className="block text-xs text-text-dim">Supabase</span>
-                <span className="block text-xs text-text-dim">Claude Opus 4.6</span>
+              <div>
+                <h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-text-dim mb-4">Stack</h4>
+                <div className="space-y-3">
+                  <span className="block text-sm text-text-dim">Next.js</span>
+                  <span className="block text-sm text-text-dim">Supabase</span>
+                  <span className="block text-sm text-text-dim">Claude Opus 4.6</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Big background text — absolute, no extra height */}
-        <div className="absolute bottom-0 left-0 right-0 pointer-events-none select-none overflow-hidden" style={{ height: "clamp(80px, 10vw, 140px)" }}>
+        {/* Big text clipped at bottom */}
+        <div className="max-w-6xl mx-auto px-8 overflow-hidden pointer-events-none select-none" style={{ height: "clamp(100px, 14vw, 180px)" }}>
           <p
-            className="font-bold leading-[0.85] text-white/[0.05] text-center w-full"
-            style={{ fontSize: "clamp(100px, 12vw, 200px)", letterSpacing: "-0.02em" }}
+            className="font-bold leading-[0.82] text-white/[0.04]"
+            style={{ fontSize: "clamp(130px, 16vw, 260px)", letterSpacing: "-0.03em" }}
           >
             Graphene
           </p>
