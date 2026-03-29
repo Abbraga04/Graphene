@@ -145,7 +145,7 @@ export default function PaperGraph({
           const d = Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2);
           if (d > maxDist) maxDist = d;
         }
-        const radius = Math.max(maxDist + 35, 50);
+        const radius = Math.min(Math.max(maxDist + 35, 50), 150);
 
         // Draw filled circle (venn region)
         ctx.beginPath();

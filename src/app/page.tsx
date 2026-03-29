@@ -341,13 +341,12 @@ export default function Home() {
         )}
 
         {/* Main view */}
-        <div className="flex-1 relative">
+        <div className={`relative ${view === "list" && selectedPaper && readerCollapsed ? "w-0" : "flex-1"}`}>
           {loading ? (
             <div className="w-full h-full flex items-center justify-center">
               <Loader2 size={24} className="animate-spin text-text-dim" />
             </div>
           ) : view === "graph" ? (
-            /* Graph always visible in graph mode */
             <PaperGraph
               papers={filteredPapers}
               connections={connections}
@@ -355,18 +354,7 @@ export default function Home() {
               selectedPaperId={selectedPaperId}
             />
           ) : selectedPaper ? (
-            /* Reader only in list mode */
-            readerCollapsed ? (
-              <div className="w-full h-full flex items-center justify-center">
-                <button
-                  onClick={() => setReaderCollapsed(false)}
-                  className="text-text-dim hover:text-text text-xs tracking-wider uppercase flex items-center gap-2 border border-border px-4 py-2 hover:border-border-hover transition-colors"
-                >
-                  <PanelLeftOpen size={14} />
-                  Show Reader
-                </button>
-              </div>
-            ) : (
+            readerCollapsed ? null : (
               <div className="w-full h-full relative">
                 <PaperReader paper={selectedPaper} />
                 <button
@@ -394,6 +382,15 @@ export default function Home() {
         {selectedPaper && (
           <>
             <div className="shrink-0 flex flex-col">
+              {view === "list" && readerCollapsed && (
+                <button
+                  onClick={() => setReaderCollapsed(false)}
+                  className="px-1 py-2 hover:bg-surface-2 transition-colors text-text-dim hover:text-text"
+                  title="Show reader"
+                >
+                  <PanelLeftOpen size={14} />
+                </button>
+              )}
               <button
                 onClick={() => setDetailCollapsed((c) => !c)}
                 className="px-1 py-2 hover:bg-surface-2 transition-colors text-text-dim hover:text-text"
@@ -416,10 +413,10 @@ export default function Home() {
               )}
             </div>
             <div
-              style={{ width: detailCollapsed ? 0 : detailWidth }}
-              className="shrink-0 overflow-hidden transition-[width] duration-200"
+              style={readerCollapsed && !detailCollapsed ? undefined : { width: detailCollapsed ? 0 : detailWidth }}
+              className={`overflow-hidden transition-[width] duration-200 ${readerCollapsed && !detailCollapsed ? "flex-1" : "shrink-0"}`}
             >
-              <div style={{ width: detailWidth }} className="h-full">
+              <div className="h-full min-w-0">
                 <PaperDetail
                   paper={selectedPaper}
                   messages={chatMessages}
