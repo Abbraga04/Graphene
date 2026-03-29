@@ -304,19 +304,21 @@ export async function POST(
       try {
         const bsMsg = await client.messages.create({
           model: "claude-opus-4-6",
-          max_tokens: 700,
+          max_tokens: 800,
           messages: [
             {
               role: "user",
-              content: `You are a ruthlessly honest academic paper reviewer. Rate this paper's bullshit level. Return ONLY valid JSON:
+              content: `You are a ruthlessly honest academic paper reviewer. Rate this paper. Return ONLY valid JSON:
 {
   "overall": <0-100, weighted average of below. 0 = seminal work, 100 = pure BS>,
-  "novelty": <0-100, 0 = genuinely new idea/approach, 100 = rehash of existing work with new branding. A paper can score well here even with imperfect methodology if the IDEA is original and interesting>,
-  "rigor": <0-100, 0 = airtight methodology with proper baselines/ablations/stats, 100 = hand-wavy with cherry-picked results. A paper can score well here even if not novel, if the execution is solid>,
-  "overclaiming": <0-100, 0 = honest about limitations and scope, 100 = "revolutionary paradigm shift" for a minor tweak. This is the biggest BS signal — does the paper's language match what it actually achieved?>,
-  "credibility": <0-100, 0 = established authors at known institutions with track record in this area, 100 = unknown authors making extraordinary claims. Consider: are the authors/institutions known? Do they have relevant prior work? Are they making claims proportional to their evidence?>,
-  "reproducibility": <0-100, 0 = code+data released, clear methodology anyone could follow, 100 = vague descriptions, no code, proprietary data, impossible to verify>,
-  "verdict": "<one brutally honest sentence. Be funny if appropriate>"
+  "novelty": <0-100, 0 = genuinely new idea/approach, 100 = rehash of existing work with new branding>,
+  "rigor": <0-100, 0 = airtight methodology, 100 = hand-wavy with cherry-picked results>,
+  "overclaiming": <0-100, 0 = honest about limitations, 100 = "revolutionary paradigm shift" for a minor tweak>,
+  "credibility": <0-100, 0 = established authors with track record, 100 = unknown authors making extraordinary claims>,
+  "reproducibility": <0-100, 0 = code+data released, clear methodology, 100 = impossible to verify>,
+  "verdict": "<one brutally honest sentence about the BS level>",
+  "interesting": <0-100, completely separate from BS. 0 = boring/derivative, 100 = fascinating must-read. A paper can be high-BS but still interesting, or low-BS but boring. Ask: would a smart researcher want to read this? Does it make you think differently? Is the question itself compelling?>,
+  "interesting_why": "<one sentence on why it is or isn't interesting>"
 }
 
 IMPORTANT scoring rules:

@@ -207,32 +207,53 @@ export default function PaperDetail({
               </div>
             )}
 
-            {/* BS Score */}
+            {/* Interesting + BS Scores side by side */}
+            {(paper as any).bs_score && (paper as any).bs_score.interesting != null && (
+              <div className="flex gap-3">
+                <div className="flex-1 border border-border p-3 text-center">
+                  <p className="text-[9px] text-text-dim tracking-[0.2em] uppercase mb-1">Interesting</p>
+                  <p className="text-2xl font-bold" style={{
+                    color: (paper as any).bs_score.interesting >= 80 ? "#8bf7c4"
+                      : (paper as any).bs_score.interesting >= 60 ? "#b8f78b"
+                      : (paper as any).bs_score.interesting >= 40 ? "#f7e88b"
+                      : "#666666"
+                  }}>
+                    {(paper as any).bs_score.interesting}
+                  </p>
+                  <p className="text-[9px] text-text-dim mt-1 italic leading-tight">
+                    {(paper as any).bs_score.interesting_why}
+                  </p>
+                </div>
+                <div className="flex-1 border border-border p-3 text-center">
+                  <p className="text-[9px] text-text-dim tracking-[0.2em] uppercase mb-1">BS Level</p>
+                  <p className="text-2xl font-bold" style={{
+                    color: (paper as any).bs_score.overall <= 20 ? "#8bf7c4"
+                      : (paper as any).bs_score.overall <= 40 ? "#b8f78b"
+                      : (paper as any).bs_score.overall <= 60 ? "#f7e88b"
+                      : (paper as any).bs_score.overall <= 80 ? "#f7a08b"
+                      : "#f78b8b"
+                  }}>
+                    {(paper as any).bs_score.overall}%
+                  </p>
+                  <p className="text-[9px] text-text-dim mt-1">
+                    {(paper as any).bs_score.overall <= 15 ? "Seminal"
+                      : (paper as any).bs_score.overall <= 30 ? "Legit"
+                      : (paper as any).bs_score.overall <= 50 ? "Decent"
+                      : (paper as any).bs_score.overall <= 70 ? "Questionable"
+                      : (paper as any).bs_score.overall <= 85 ? "Smells like BS"
+                      : "Pure BS"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* BS Score Breakdown */}
             {(paper as any).bs_score && (
               <div>
                 <h3 className="text-[10px] text-text-dim tracking-[0.2em] uppercase mb-2">
-                  BS Rating
+                  BS Breakdown
                 </h3>
                 <div className="border border-border p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold" style={{
-                      color: (paper as any).bs_score.overall <= 20 ? "#8bf7c4"
-                        : (paper as any).bs_score.overall <= 40 ? "#b8f78b"
-                        : (paper as any).bs_score.overall <= 60 ? "#f7e88b"
-                        : (paper as any).bs_score.overall <= 80 ? "#f7a08b"
-                        : "#f78b8b"
-                    }}>
-                      {(paper as any).bs_score.overall}%
-                    </span>
-                    <span className="text-[10px] text-text-dim tracking-wider uppercase">
-                      {(paper as any).bs_score.overall <= 15 ? "Seminal"
-                        : (paper as any).bs_score.overall <= 30 ? "Legit"
-                        : (paper as any).bs_score.overall <= 50 ? "Decent"
-                        : (paper as any).bs_score.overall <= 70 ? "Questionable"
-                        : (paper as any).bs_score.overall <= 85 ? "Smells like BS"
-                        : "Pure BS"}
-                    </span>
-                  </div>
                   <p className="text-[10px] text-text italic">
                     &quot;{(paper as any).bs_score.verdict}&quot;
                   </p>
