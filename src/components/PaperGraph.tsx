@@ -182,14 +182,14 @@ export default function PaperGraph({
         linkOpacity={0.3}
         backgroundColor="#000000"
         showNavInfo={false}
-        cooldownTime={3000}
-        d3AlphaDecay={0.02}
-        d3VelocityDecay={0.3}
+        cooldownTime={2000}
+        d3AlphaDecay={0.03}
+        d3VelocityDecay={0.4}
         d3Force="charge"
         d3ForceConfig={{
-          charge: { strength: -80, distanceMax: 150 },
-          link: { distance: 30 },
-          center: { strength: 1 },
+          charge: { strength: -30, distanceMax: 80 },
+          link: { distance: 20 },
+          center: { strength: 1.5 },
         }}
       />
     </div>
