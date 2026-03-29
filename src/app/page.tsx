@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense, lazy } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Paper, PaperConnection, ChatMessage } from "@/lib/supabase";
 import PaperList from "@/components/PaperList";
 import PaperDetail from "@/components/PaperDetail";
@@ -20,7 +20,7 @@ import {
 import PaperReader from "@/components/PaperReader";
 import ResizeHandle from "@/components/ResizeHandle";
 
-const PaperGraph = lazy(() => import("@/components/PaperGraph"));
+import PaperGraph from "@/components/PaperGraph";
 
 export default function Home() {
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -337,20 +337,12 @@ export default function Home() {
               <Loader2 size={24} className="animate-spin text-text-dim" />
             </div>
           ) : view === "graph" && !selectedPaper ? (
-            <Suspense
-              fallback={
-                <div className="w-full h-full flex items-center justify-center">
-                  <Loader2 size={24} className="animate-spin text-text-dim" />
-                </div>
-              }
-            >
-              <PaperGraph
-                papers={filteredPapers}
-                connections={connections}
-                onSelectPaper={selectPaper}
-                selectedPaperId={selectedPaperId}
-              />
-            </Suspense>
+            <PaperGraph
+              papers={filteredPapers}
+              connections={connections}
+              onSelectPaper={selectPaper}
+              selectedPaperId={selectedPaperId}
+            />
           ) : selectedPaper ? (
             <PaperReader paper={selectedPaper} />
           ) : null}
