@@ -5,7 +5,7 @@
 <h1 align="center">Graphene</h1>
 
 <p align="center">
-  A modern paper reader with AI-powered analysis, a knowledge graph, and a BS detector.
+  Open source research paper management with AI.
 </p>
 
 <p align="center">
@@ -17,14 +17,13 @@
 ## Features
 
 - **Paper ingestion** — Paste any arXiv URL, PDF link, or paper webpage. Graphene scrapes metadata, downloads PDFs, and stores everything.
+- **Knowledge graph** — Visual map of all your papers with category clusters and connections between related work.
 - **AI summaries** — Claude generates concise summaries from the full paper text (HTML preferred, PDF fallback).
-- **Legitness score** — AI rates each paper on honesty, rigor, novelty, credibility, and reproducibility. Higher = more legit.
-- **Interesting score** — Separate from legitness. Judges the idea, not the execution.
-- **Knowledge graph** — 2D force-directed map with Venn diagram clusters by category. Hover for details, click to open.
-- **Paper reader** — Embedded PDF viewer for reading papers inline.
 - **AI chat** — Ask questions about any paper. Claude has full context including the summary, scores, and metadata.
-- **Reading tracker** — Mark papers as read, filter by status.
-- **Notes** — Per-paper notes.
+- **Paper reader** — Embedded PDF viewer for reading papers inline.
+- **Reading tracker** — Mark papers as read, filter by status, take notes.
+- **Legitness score** — AI rates each paper on honesty, rigor, novelty, credibility, and reproducibility.
+- **Interesting score** — Separate from legitness. Judges the idea, not the execution.
 - **Sort & filter** — By date added, date published, legitness, interesting score, category, read status.
 - **Resizable panels** — Drag to resize, collapse any panel.
 
@@ -63,7 +62,8 @@ CREATE TABLE IF NOT EXISTS papers (
   read_at TIMESTAMPTZ,
   is_read BOOLEAN DEFAULT FALSE,
   notes TEXT DEFAULT '',
-  bs_score JSONB
+  bs_score JSONB,
+  user_id UUID
 );
 
 CREATE TABLE IF NOT EXISTS paper_connections (
@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS paper_connections (
   paper_b TEXT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
   strength REAL DEFAULT 0.5,
   relation_type TEXT DEFAULT 'similar',
+  user_id UUID,
   UNIQUE(paper_a, paper_b)
 );
 
@@ -82,11 +83,6 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
--- Disable RLS for simplicity (or add your own policies)
-ALTER TABLE papers DISABLE ROW LEVEL SECURITY;
-ALTER TABLE paper_connections DISABLE ROW LEVEL SECURITY;
-ALTER TABLE chat_messages DISABLE ROW LEVEL SECURITY;
 
 -- Create storage bucket for PDFs
 INSERT INTO storage.buckets (id, name, public) VALUES ('papers', 'papers', true) ON CONFLICT DO NOTHING;
@@ -133,7 +129,7 @@ Works anywhere Next.js runs — Railway, Fly.io, Render, self-hosted VPS, etc.
 ## Stack
 
 - **Next.js 16** — App router, API routes
-- **Supabase** — Postgres database + file storage
+- **Supabase** — Postgres database, auth, file storage
 - **Claude Opus 4.6** — Summaries, ratings, chat, metadata extraction
 - **react-force-graph-2d** — Knowledge graph visualization
 - **Tailwind CSS v4** — Styling
