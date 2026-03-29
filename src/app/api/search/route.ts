@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchArxiv } from "@/lib/arxiv";
+import { getUser } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
+  const user = await getUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const query = req.nextUrl.searchParams.get("q");
   if (!query) {
     return NextResponse.json({ error: "Query required" }, { status: 400 });

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { getUser } from "@/lib/auth";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   const proxy = req.nextUrl.searchParams.get("proxy") === "1";
 
