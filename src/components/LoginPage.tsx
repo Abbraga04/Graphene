@@ -24,159 +24,117 @@ function DitheredLogo() {
     canvas.width = W;
     canvas.height = H;
 
-    const bayer = [
-      [0,32,8,40,2,34,10,42],
-      [48,16,56,24,50,18,58,26],
-      [12,44,4,36,14,46,6,38],
-      [60,28,52,20,62,30,54,22],
-      [3,35,11,43,1,33,9,41],
-      [51,19,59,27,49,17,57,25],
-      [15,47,7,39,13,45,5,37],
-      [63,31,55,23,61,29,53,21],
-    ];
-
-    // Load the actual logo and extract as a flat texture
+    // Load logo and create brightness map
     const logoImg = new Image();
     logoImg.src = "/graphene.png";
-    let logoCanvas: HTMLCanvasElement | null = null;
+    let logoData: Uint8ClampedArray | null = null;
+    const LOGO_SIZE = 200;
 
     logoImg.onload = () => {
-      // Pre-render inverted logo (white shape on transparent)
-      logoCanvas = document.createElement("canvas");
-      logoCanvas.width = 256;
-      logoCanvas.height = 256;
-      const lc = logoCanvas.getContext("2d")!;
-      lc.drawImage(logoImg, 0, 0, 256, 256);
-      const ld = lc.getImageData(0, 0, 256, 256);
-      const p = ld.data;
-      for (let i = 0; i < p.length; i += 4) {
-        const avg = (p[i] + p[i + 1] + p[i + 2]) / 3;
-        const isShape = avg < 128;
-        p[i] = p[i + 1] = p[i + 2] = 255;
-        p[i + 3] = isShape ? 255 : 0;
-      }
-      lc.putImageData(ld, 0, 0);
+      const tmp = document.createElement("canvas");
+      tmp.width = LOGO_SIZE;
+      tmp.height = LOGO_SIZE;
+      const tc = tmp.getContext("2d")!;
+      tc.drawImage(logoImg, 0, 0, LOGO_SIZE, LOGO_SIZE);
+      const id = tc.getImageData(0, 0, LOGO_SIZE, LOGO_SIZE);
+      logoData = id.data;
     };
+
+    const chars = " .:-=+*#%@";
+    const CELL = 7;
+    const cols = Math.floor(W / CELL);
+    const rows = Math.floor(H / CELL);
+
+    // Matrix rain state per column
+    const drops: number[] = new Array(cols).fill(0).map(() => Math.random() * rows);
+    const speeds: number[] = new Array(cols).fill(0).map(() => 0.3 + Math.random() * 0.8);
 
     let time = 0;
 
     const render = () => {
-      time += 0.008;
-      ctx.clearRect(0, 0, W, H);
+      time += 0.012;
+      ctx.fillStyle = "rgba(0,0,0,0.15)";
+      ctx.fillRect(0, 0, W, H);
 
-      if (!logoCanvas) {
-        animRef.current = requestAnimationFrame(render);
-        return;
-      }
+      if (!logoData) { animRef.current = requestAnimationFrame(render); return; }
 
-      const tmp = document.createElement("canvas");
-      tmp.width = W;
-      tmp.height = H;
-      const tc = tmp.getContext("2d")!;
-
-      // 3D rotation of a flat plane with the logo on it
-      const rotY = time;
-      const rotX = Math.sin(time * 0.5) * 0.25;
+      // 3D rotation
+      const rotY = time * 0.8;
+      const rotX = Math.sin(time * 0.4) * 0.3;
       const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
       const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
-      const size = 200;
+      const fov = 400;
 
-      // Four corners of the logo plane in 3D
-      const corners3D = [
-        [-size, -size, 0],
-        [size, -size, 0],
-        [size, size, 0],
-        [-size, size, 0],
-      ];
+      ctx.font = `${CELL}px JetBrains Mono, monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
 
-      // Rotate and project
-      const fov = 500;
-      const projected = corners3D.map(([x, y, z]) => {
-        // Rotate Y
-        let rx = x * cosY + z * sinY;
-        let rz = -x * sinY + z * cosY;
-        // Rotate X
-        let ry = y * cosX - rz * sinX;
-        rz = y * sinX + rz * cosX;
-        // Project
-        const d = fov / (fov + rz + 300);
-        return [rx * d + W / 2, ry * d + H / 2];
-      });
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const sx = (col / cols - 0.5) * 2;
+          const sy = (row / rows - 0.5) * 2;
 
-      // Use CSS-style 2D transform to map the logo texture onto the projected quad
-      // We'll use two triangles
-      function drawTexturedTriangle(
-        img: HTMLCanvasElement,
-        sx0: number, sy0: number, sx1: number, sy1: number, sx2: number, sy2: number,
-        dx0: number, dy0: number, dx1: number, dy1: number, dx2: number, dy2: number
-      ) {
-        tc.save();
-        tc.beginPath();
-        tc.moveTo(dx0, dy0);
-        tc.lineTo(dx1, dy1);
-        tc.lineTo(dx2, dy2);
-        tc.closePath();
-        tc.clip();
+          // Map screen position back to logo UV via inverse 3D projection
+          let x3 = sx * 200;
+          let y3 = sy * 200;
+          let z3 = 0;
 
-        const denom = sx0 * (sy1 - sy2) + sx1 * (sy2 - sy0) + sx2 * (sy0 - sy1);
-        if (Math.abs(denom) < 0.001) { tc.restore(); return; }
+          // Inverse rotate to find logo coordinate
+          let rx = x3 * cosY - z3 * sinY;
+          let rz = x3 * sinY + z3 * cosY;
+          let ry = y3 * cosX + rz * sinX;
 
-        const a = (dx0 * (sy1 - sy2) + dx1 * (sy2 - sy0) + dx2 * (sy0 - sy1)) / denom;
-        const b = (dx0 * (sx2 - sx1) + dx1 * (sx0 - sx2) + dx2 * (sx1 - sx0)) / denom;
-        const c_ = (dx0 * (sx1 * sy2 - sx2 * sy1) + dx1 * (sx2 * sy0 - sx0 * sy2) + dx2 * (sx0 * sy1 - sx1 * sy0)) / denom;
-        const d = (dy0 * (sy1 - sy2) + dy1 * (sy2 - sy0) + dy2 * (sy0 - sy1)) / denom;
-        const e = (dy0 * (sx2 - sx1) + dy1 * (sx0 - sx2) + dy2 * (sx1 - sx0)) / denom;
-        const f = (dy0 * (sx1 * sy2 - sx2 * sy1) + dy1 * (sx2 * sy0 - sx0 * sy2) + dy2 * (sx0 * sy1 - sx1 * sy0)) / denom;
+          // Map to logo pixel
+          const lu = Math.floor((rx / 200 + 0.5) * LOGO_SIZE);
+          const lv = Math.floor((ry / 200 + 0.5) * LOGO_SIZE);
 
-        tc.setTransform(a, d, b, e, c_, f);
-        tc.globalAlpha = 0.9;
-        tc.drawImage(img, 0, 0);
-        tc.restore();
-      }
+          let logoBrightness = 0;
+          if (lu >= 0 && lu < LOGO_SIZE && lv >= 0 && lv < LOGO_SIZE) {
+            const idx = (lv * LOGO_SIZE + lu) * 4;
+            const avg = (logoData[idx] + logoData[idx + 1] + logoData[idx + 2]) / 3;
+            logoBrightness = avg < 128 ? 1 : 0; // dark parts = logo shape
+          }
 
-      const [p0, p1, p2, p3] = projected;
-      const iw = logoCanvas.width, ih = logoCanvas.height;
+          // Matrix rain effect
+          const dropY = drops[col];
+          const distFromDrop = row - dropY;
+          let rainBrightness = 0;
+          if (distFromDrop >= 0 && distFromDrop < 15) {
+            rainBrightness = distFromDrop === 0 ? 1 : Math.max(0, 0.4 - distFromDrop * 0.03);
+          }
 
-      // Two triangles to cover the quad
-      drawTexturedTriangle(logoCanvas,
-        0, 0, iw, 0, iw, ih,
-        p0[0], p0[1], p1[0], p1[1], p2[0], p2[1]
-      );
-      drawTexturedTriangle(logoCanvas,
-        0, 0, iw, ih, 0, ih,
-        p0[0], p0[1], p2[0], p2[1], p3[0], p3[1]
-      );
+          // Combine: logo shape gets bright, rain adds ambient
+          const brightness = Math.max(logoBrightness * 0.8, rainBrightness * 0.15);
+          if (brightness < 0.02) continue;
 
-      // Dithering
-      const imgData = tc.getImageData(0, 0, W, H);
-      const dd = imgData.data;
-      for (let y = 0; y < H; y++) {
-        for (let x = 0; x < W; x++) {
-          const i = (y * W + x) * 4;
-          const a = dd[i + 3];
-          if (a < 5) { dd[i + 3] = 0; continue; }
-          const avg = dd[i];
-          const threshold = (bayer[y % 8][x % 8] / 64) * 255;
-          const on = avg > threshold * 0.4;
-          dd[i] = dd[i + 1] = dd[i + 2] = 255;
-          dd[i + 3] = on ? Math.min(255, a) : 0;
+          // Pick character
+          const charIdx = Math.min(chars.length - 1, Math.floor(brightness * chars.length));
+          const ch = logoBrightness > 0
+            ? chars[charIdx]
+            : String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96)); // katakana for rain
+
+          // Color
+          if (logoBrightness > 0) {
+            const perspScale = fov / (fov + Math.abs(sinY) * 100);
+            const b = Math.floor(brightness * 255 * perspScale);
+            ctx.fillStyle = `rgb(${b},${b},${b})`;
+          } else {
+            const g = Math.floor(rainBrightness * 80);
+            ctx.fillStyle = `rgba(${g},${Math.floor(g * 1.5)},${g},0.6)`;
+          }
+
+          ctx.fillText(ch, col * CELL + CELL / 2, row * CELL + CELL / 2);
         }
       }
-      tc.putImageData(imgData, 0, 0);
 
-      ctx.drawImage(tmp, 0, 0);
-
-      // Glow
-      ctx.globalCompositeOperation = "screen";
-      ctx.filter = "blur(5px)";
-      ctx.globalAlpha = 0.3;
-      ctx.drawImage(tmp, 0, 0);
-      ctx.filter = "blur(15px)";
-      ctx.globalAlpha = 0.12;
-      ctx.drawImage(tmp, 0, 0);
-      ctx.filter = "none";
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = "source-over";
+      // Update rain drops
+      for (let i = 0; i < cols; i++) {
+        drops[i] += speeds[i];
+        if (drops[i] > rows + 15) {
+          drops[i] = -Math.random() * 20;
+          speeds[i] = 0.3 + Math.random() * 0.8;
+        }
+      }
 
       animRef.current = requestAnimationFrame(render);
     };
