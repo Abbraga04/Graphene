@@ -12,40 +12,6 @@ function GithubIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-// Draw hexagonal aperture outline
-function drawHexOutline(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, rotation: number, lineWidth: number) {
-  const sides = 6;
-  // Outer hex
-  ctx.beginPath();
-  for (let i = 0; i <= sides; i++) {
-    const a = (Math.PI * 2 * i) / sides + rotation - Math.PI / 6;
-    const method = i === 0 ? "moveTo" : "lineTo";
-    ctx[method](cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-  }
-  ctx.lineWidth = lineWidth;
-  ctx.stroke();
-
-  // Inner hex (aperture hole)
-  const innerR = r * 0.35;
-  ctx.beginPath();
-  for (let i = 0; i <= sides; i++) {
-    const a = (Math.PI * 2 * i) / sides + rotation - Math.PI / 6;
-    const method = i === 0 ? "moveTo" : "lineTo";
-    ctx[method](cx + Math.cos(a) * innerR, cy + Math.sin(a) * innerR);
-  }
-  ctx.stroke();
-
-  // Blade lines connecting outer to inner
-  for (let i = 0; i < sides; i++) {
-    const a1 = (Math.PI * 2 * i) / sides + rotation - Math.PI / 6;
-    const a2 = (Math.PI * 2 * (i + 0.5)) / sides + rotation - Math.PI / 6;
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r);
-    ctx.lineTo(cx + Math.cos(a2) * innerR, cy + Math.sin(a2) * innerR);
-    ctx.stroke();
-  }
-}
-
 function DitheredLogo() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
@@ -69,59 +35,152 @@ function DitheredLogo() {
       [63,31,55,23,61,29,53,21],
     ];
 
+    // 3D projection helpers
+    const fov = 400;
+    function project(x: number, y: number, z: number): [number, number, number] {
+      const scale = fov / (fov + z);
+      return [x * scale + W / 2, y * scale + H / 2, scale];
+    }
+
+    function rotateY(x: number, y: number, z: number, a: number): [number, number, number] {
+      return [x * Math.cos(a) + z * Math.sin(a), y, -x * Math.sin(a) + z * Math.cos(a)];
+    }
+
+    function rotateX(x: number, y: number, z: number, a: number): [number, number, number] {
+      return [x, y * Math.cos(a) - z * Math.sin(a), y * Math.sin(a) + z * Math.cos(a)];
+    }
+
+    // Build the 3D hex aperture geometry — front face + back face + sides
+    const R = 150; // outer radius
+    const r = 55;  // inner radius
+    const depth = 40; // thickness
+    const sides = 6;
+
+    function getHexPoints(radius: number, zOff: number) {
+      const pts: [number, number, number][] = [];
+      for (let i = 0; i < sides; i++) {
+        const a = (Math.PI * 2 * i) / sides - Math.PI / 6;
+        pts.push([Math.cos(a) * radius, Math.sin(a) * radius, zOff]);
+      }
+      return pts;
+    }
+
     let time = 0;
 
     const render = () => {
-      time += 0.006;
-      ctx.clearRect(0, 0, W, H);
+      time += 0.01;
 
       const tmp = document.createElement("canvas");
       tmp.width = W;
       tmp.height = H;
       const tc = tmp.getContext("2d")!;
 
-      const cx = W / 2, cy = H / 2;
+      const ry = time;
+      const rx = Math.sin(time * 0.7) * 0.3;
 
-      // Draw multiple receding layers — like looking down a tunnel
-      const layers = 12;
-      for (let l = layers; l >= 0; l--) {
-        const t = l / layers;
-        // Perspective: further layers are smaller and dimmer
-        const scale = 0.15 + t * 0.85;
-        const r = 190 * scale;
-        const rot = time + l * 0.1;
-        const brightness = l === 0 ? 1.0 : 0.05 + (1 - t) * 0.5;
-        const lw = l === 0 ? 3 : Math.max(1, 2.5 * (1 - t));
+      // Get all hex vertices
+      const outerFront = getHexPoints(R, -depth / 2);
+      const outerBack = getHexPoints(R, depth / 2);
+      const innerFront = getHexPoints(r, -depth / 2);
+      const innerBack = getHexPoints(r, depth / 2);
 
-        tc.strokeStyle = `rgba(255,255,255,${brightness})`;
-        drawHexOutline(tc, cx, cy, r, rot, lw);
+      // Transform all points
+      function xform(p: [number, number, number]): [number, number, number] {
+        let [x, y, z] = rotateX(p[0], p[1], p[2], rx);
+        [x, y, z] = rotateY(x, y, z, ry);
+        return project(x, y, z + 200);
       }
 
-      // Ordered dithering pass
+      const ofP = outerFront.map(xform);
+      const obP = outerBack.map(xform);
+      const ifP = innerFront.map(xform);
+      const ibP = innerBack.map(xform);
+
+      // Draw function
+      function drawLine(a: [number, number, number], b: [number, number, number], brightness: number) {
+        tc.strokeStyle = `rgba(255,255,255,${brightness})`;
+        tc.lineWidth = 2;
+        tc.beginPath();
+        tc.moveTo(a[0], a[1]);
+        tc.lineTo(b[0], b[1]);
+        tc.stroke();
+      }
+
+      function drawPoly(pts: [number, number, number][], brightness: number) {
+        tc.strokeStyle = `rgba(255,255,255,${brightness})`;
+        tc.lineWidth = 2;
+        tc.beginPath();
+        pts.forEach((p, i) => i === 0 ? tc.moveTo(p[0], p[1]) : tc.lineTo(p[0], p[1]));
+        tc.closePath();
+        tc.stroke();
+      }
+
+      // Draw edges — outer front, outer back, inner front, inner back
+      drawPoly(ofP, 0.9);
+      drawPoly(obP, 0.4);
+      drawPoly(ifP, 0.9);
+      drawPoly(ibP, 0.4);
+
+      // Side edges connecting front to back (outer)
+      for (let i = 0; i < sides; i++) {
+        drawLine(ofP[i], obP[i], 0.5);
+      }
+
+      // Side edges connecting front to back (inner)
+      for (let i = 0; i < sides; i++) {
+        drawLine(ifP[i], ibP[i], 0.5);
+      }
+
+      // Blade lines: connect outer vertex to offset inner vertex (front)
+      for (let i = 0; i < sides; i++) {
+        drawLine(ofP[i], ifP[(i + 1) % sides], 0.7);
+      }
+
+      // Blade lines (back)
+      for (let i = 0; i < sides; i++) {
+        drawLine(obP[i], ibP[(i + 1) % sides], 0.3);
+      }
+
+      // Fill front face polygons lightly
+      for (let i = 0; i < sides; i++) {
+        const next = (i + 1) % sides;
+        tc.fillStyle = "rgba(255,255,255,0.06)";
+        tc.beginPath();
+        tc.moveTo(ofP[i][0], ofP[i][1]);
+        tc.lineTo(ofP[next][0], ofP[next][1]);
+        tc.lineTo(ifP[(next + 1) % sides][0], ifP[(next + 1) % sides][1]);
+        tc.lineTo(ifP[(i + 1) % sides][0], ifP[(i + 1) % sides][1]);
+        tc.closePath();
+        tc.fill();
+      }
+
+      // Dithering
       const imgData = tc.getImageData(0, 0, W, H);
       const d = imgData.data;
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
           const i = (y * W + x) * 4;
           const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
-          if (avg < 3) { d[i + 3] = 0; continue; }
+          if (avg < 2) { d[i + 3] = 0; continue; }
           const threshold = (bayer[y % 8][x % 8] / 64) * 255;
-          const on = avg > threshold * 0.6;
+          const on = avg > threshold * 0.5;
           d[i] = d[i + 1] = d[i + 2] = 255;
-          d[i + 3] = on ? Math.min(255, Math.round(avg * 1.5 + 30)) : 0;
+          d[i + 3] = on ? Math.min(255, Math.round(avg * 2)) : 0;
         }
       }
       tc.putImageData(imgData, 0, 0);
 
+      // Render to main canvas
+      ctx.clearRect(0, 0, W, H);
       ctx.drawImage(tmp, 0, 0);
 
       // Glow
       ctx.globalCompositeOperation = "screen";
-      ctx.filter = "blur(6px)";
-      ctx.globalAlpha = 0.25;
+      ctx.filter = "blur(4px)";
+      ctx.globalAlpha = 0.3;
       ctx.drawImage(tmp, 0, 0);
-      ctx.filter = "blur(16px)";
-      ctx.globalAlpha = 0.12;
+      ctx.filter = "blur(12px)";
+      ctx.globalAlpha = 0.15;
       ctx.drawImage(tmp, 0, 0);
       ctx.filter = "none";
       ctx.globalAlpha = 1;
