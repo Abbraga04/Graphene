@@ -122,26 +122,26 @@ export default function PaperGraph({
       // Label sprite
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d")!;
-      canvas.width = 512;
-      canvas.height = 80;
-      ctx.clearRect(0, 0, 512, 80);
+      canvas.width = 1024;
+      canvas.height = 128;
+      ctx.clearRect(0, 0, 1024, 128);
 
       // Title
-      ctx.font = "bold 22px JetBrains Mono, monospace";
+      ctx.font = "bold 28px JetBrains Mono, monospace";
       ctx.fillStyle = isSelected ? "#ffffff" : "#cccccc";
       ctx.textAlign = "center";
-      const label = node.title.length > 40 ? node.title.slice(0, 40) + "..." : node.title;
-      ctx.fillText(label, 256, 28);
+      const label = node.title.length > 50 ? node.title.slice(0, 50) + "..." : node.title;
+      ctx.fillText(label, 512, 45);
 
       // Category
-      ctx.font = "16px JetBrains Mono, monospace";
+      ctx.font = "20px JetBrains Mono, monospace";
       ctx.fillStyle = node.color;
-      ctx.fillText(node.category, 256, 55);
+      ctx.fillText(node.category, 512, 85);
 
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(spriteMat);
-      sprite.scale.set(28, 4.5, 1);
+      sprite.scale.set(40, 5, 1);
       sprite.position.set(0, 5, 0);
       group.add(sprite);
 
