@@ -231,8 +231,8 @@ export default function PaperGraph({
         d3VelocityDecay={0.3}
         d3Force="charge"
         d3ForceConfig={{
-          charge: { strength: -60, distanceMax: 200 },
-          link: { distance: 40 },
+          charge: { strength: -200, distanceMax: 400 },
+          link: { distance: 60 },
         }}
       />
     </div>

@@ -40,12 +40,23 @@ export async function fetchArxivPaper(arxivId: string): Promise<ArxivResult | nu
   }
 }
 
+function decodeEntities(str: string): string {
+  return str
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
 function scrapeAbsPage(id: string, html: string): ArxivResult | null {
   // Title
   const titleMatch = html.match(/<h1 class="title[^"]*">\s*<span[^>]*>Title:<\/span>\s*([\s\S]*?)<\/h1>/i)
     || html.match(/<title>\[[\d.]+\]\s*(.*?)<\/title>/i);
   const title = titleMatch
-    ? titleMatch[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()
+    ? decodeEntities(titleMatch[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim())
     : "";
   if (!title) return null;
 
@@ -56,14 +67,14 @@ function scrapeAbsPage(id: string, html: string): ArxivResult | null {
     const authRegex = />([^<]+)<\/a>/g;
     let m;
     while ((m = authRegex.exec(authSection[1])) !== null) {
-      authors.push(m[1].trim());
+      authors.push(decodeEntities(m[1].trim()));
     }
   }
 
   // Abstract
   const absMatch = html.match(/<blockquote class="abstract[^"]*">\s*<span[^>]*>Abstract:<\/span>\s*([\s\S]*?)<\/blockquote>/i);
   const abstract = absMatch
-    ? absMatch[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()
+    ? decodeEntities(absMatch[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim())
     : "";
 
   // Date
