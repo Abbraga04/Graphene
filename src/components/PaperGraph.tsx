@@ -67,10 +67,14 @@ export default function PaperGraph({
     };
     updateSize();
 
-    // ResizeObserver catches container resizes from panel drag, not just window
-    const ro = new ResizeObserver(updateSize);
+    // Debounced ResizeObserver to avoid simulation restarts
+    let timeout: NodeJS.Timeout;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(timeout);
+      timeout = setTimeout(updateSize, 100);
+    });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => { ro.disconnect(); clearTimeout(timeout); };
   }, []);
 
   const graphData = useMemo(() => {

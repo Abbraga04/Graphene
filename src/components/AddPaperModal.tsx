@@ -127,6 +127,7 @@ export default function AddPaperModal({
                   onChange={(e) => setUrl(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSubmitUrl()}
                   placeholder="https://arxiv.org/abs/... or any PDF URL"
+                  autoFocus
                   className="flex-1 bg-bg border border-border px-4 py-3 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
                 />
                 <button

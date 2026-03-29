@@ -39,6 +39,7 @@ export default function Home() {
   const [listWidth, setListWidth] = useState(320);
   const [listCollapsed, setListCollapsed] = useState(false);
   const [detailCollapsed, setDetailCollapsed] = useState(false);
+  const [readerCollapsed, setReaderCollapsed] = useState(false);
   const [detailWidth, setDetailWidth] = useState(420);
 
   // Fetch all papers
@@ -355,7 +356,28 @@ export default function Home() {
             />
           ) : selectedPaper ? (
             /* Reader only in list mode */
-            <PaperReader paper={selectedPaper} />
+            readerCollapsed ? (
+              <div className="w-full h-full flex items-center justify-center">
+                <button
+                  onClick={() => setReaderCollapsed(false)}
+                  className="text-text-dim hover:text-text text-xs tracking-wider uppercase flex items-center gap-2 border border-border px-4 py-2 hover:border-border-hover transition-colors"
+                >
+                  <PanelLeftOpen size={14} />
+                  Show Reader
+                </button>
+              </div>
+            ) : (
+              <div className="w-full h-full relative">
+                <PaperReader paper={selectedPaper} />
+                <button
+                  onClick={() => setReaderCollapsed(true)}
+                  className="absolute top-3 right-3 p-1.5 bg-surface/80 backdrop-blur border border-border text-text-dim hover:text-text hover:border-border-hover transition-colors z-10"
+                  title="Hide reader"
+                >
+                  <PanelLeftClose size={14} />
+                </button>
+              </div>
+            )
           ) : null}
 
           {/* Graph overlay: paper count chips */}
