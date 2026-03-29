@@ -3,7 +3,16 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Graphene — Paper Intelligence",
-  description: "A 3D knowledge graph for academic papers",
+  description: "A knowledge graph for academic papers",
+  icons: {
+    icon: "/graphene.png",
+    apple: "/graphene.png",
+  },
+  openGraph: {
+    title: "Graphene",
+    description: "A knowledge graph for academic papers",
+    images: ["/graphene.png"],
+  },
 };
 
 export default function RootLayout({

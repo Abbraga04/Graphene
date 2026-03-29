@@ -11,7 +11,6 @@ import {
   List,
   Loader2,
   Search,
-  Hexagon,
   FileText,
   PanelLeftClose,
   PanelLeftOpen,
@@ -223,7 +222,7 @@ export default function Home() {
       {/* Top bar */}
       <header className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-surface">
         <div className="flex items-center gap-4">
-          <Hexagon size={20} className="text-accent" strokeWidth={2} />
+          <img src="/graphene.png" alt="Graphene" className="w-5 h-5 invert" />
           <span className="text-sm font-semibold tracking-[0.3em] uppercase text-accent">
             Graphene
           </span>
