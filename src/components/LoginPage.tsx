@@ -78,7 +78,7 @@ export default function LoginPage() {
   const { signInWithGithub, signInWithGoogle } = useAuth();
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col">
+    <div className="min-h-screen bg-bg flex flex-col overflow-hidden">
       {/* Nav */}
       <nav className="flex items-center justify-between px-8 py-4">
         <div className="flex items-center gap-2">
@@ -174,7 +174,7 @@ export default function LoginPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border px-8 py-12 relative overflow-hidden">
+      <footer className="border-t border-border px-8 pt-12 pb-24 relative overflow-hidden">
         <div className="max-w-6xl mx-auto flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-3">
