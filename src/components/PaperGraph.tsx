@@ -197,32 +197,30 @@ export default function PaperGraph({
       ctx.fillStyle = isSelected ? "#ffffff" : node.isRead ? color.node : color.node + "99";
       ctx.fill();
 
-      // Always show short label
-      const smallFont = Math.max(7 / globalScale, 2);
-      ctx.font = `${smallFont}px JetBrains Mono, monospace`;
+      // Label
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      const shortLabel = node.title.length > 25 ? node.title.slice(0, 25) + "..." : node.title;
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillText(shortLabel, x + 0.3, y + r + 2 + 0.3);
-      ctx.fillStyle = isSelected ? "#ffffff" : "#999999";
-      ctx.fillText(shortLabel, x, y + r + 2);
 
-      // Full label on hover/select
       if (showLabel) {
+        // Full label on hover/select — above the node
         const fontSize = Math.max(11 / globalScale, 4);
         ctx.font = `600 ${fontSize}px JetBrains Mono, monospace`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "top";
         const label = node.title.length > 55 ? node.title.slice(0, 55) + "..." : node.title;
-
         const metrics = ctx.measureText(label);
-        const px = 4, py = 2;
+        const px = 5, py = 3;
         ctx.fillStyle = "rgba(0,0,0,0.9)";
-        ctx.fillRect(x - metrics.width / 2 - px, y - r - fontSize - py * 2 - 4, metrics.width + px * 2, fontSize + py * 2);
-
+        ctx.fillRect(x - metrics.width / 2 - px, y - r - fontSize - py * 2 - 6, metrics.width + px * 2, fontSize + py * 2);
         ctx.fillStyle = "#ffffff";
-        ctx.fillText(label, x, y - r - fontSize - py - 4);
+        ctx.fillText(label, x, y - r - fontSize - py - 6);
+      } else {
+        // Short label below node
+        const smallFont = Math.max(7 / globalScale, 2);
+        ctx.font = `${smallFont}px JetBrains Mono, monospace`;
+        const shortLabel = node.title.length > 22 ? node.title.slice(0, 22) + "..." : node.title;
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillText(shortLabel, x + 0.3, y + r + 2 + 0.3);
+        ctx.fillStyle = "#888888";
+        ctx.fillText(shortLabel, x, y + r + 2);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
