@@ -217,38 +217,56 @@ export default function PaperDetail({
                   <div className="flex items-center justify-between">
                     <span className="text-2xl font-bold" style={{
                       color: (paper as any).bs_score.overall <= 20 ? "#8bf7c4"
-                        : (paper as any).bs_score.overall <= 50 ? "#f7e88b"
-                        : (paper as any).bs_score.overall <= 75 ? "#f7a08b"
+                        : (paper as any).bs_score.overall <= 40 ? "#b8f78b"
+                        : (paper as any).bs_score.overall <= 60 ? "#f7e88b"
+                        : (paper as any).bs_score.overall <= 80 ? "#f7a08b"
                         : "#f78b8b"
                     }}>
                       {(paper as any).bs_score.overall}%
                     </span>
                     <span className="text-[10px] text-text-dim tracking-wider uppercase">
-                      {(paper as any).bs_score.overall <= 20 ? "Legit"
-                        : (paper as any).bs_score.overall <= 40 ? "Mostly solid"
-                        : (paper as any).bs_score.overall <= 60 ? "Questionable"
-                        : (paper as any).bs_score.overall <= 80 ? "Smells like BS"
+                      {(paper as any).bs_score.overall <= 15 ? "Seminal"
+                        : (paper as any).bs_score.overall <= 30 ? "Legit"
+                        : (paper as any).bs_score.overall <= 50 ? "Decent"
+                        : (paper as any).bs_score.overall <= 70 ? "Questionable"
+                        : (paper as any).bs_score.overall <= 85 ? "Smells like BS"
                         : "Pure BS"}
                     </span>
                   </div>
                   <p className="text-[10px] text-text italic">
-                    {(paper as any).bs_score.verdict}
+                    &quot;{(paper as any).bs_score.verdict}&quot;
                   </p>
-                  <div className="grid grid-cols-2 gap-1.5 mt-2">
+                  <div className="space-y-1.5 mt-2">
                     {[
-                      ["Novelty", (paper as any).bs_score.novelty],
-                      ["Methodology", (paper as any).bs_score.methodology],
-                      ["Claims vs Evidence", (paper as any).bs_score.claims_vs_evidence],
-                      ["Buzzword Density", (paper as any).bs_score.buzzword_density],
-                      ["Reproducibility", (paper as any).bs_score.reproducibility],
-                    ].map(([label, val]) => (
-                      <div key={label as string} className="flex items-center justify-between text-[9px]">
-                        <span className="text-text-dim">{label}</span>
-                        <span style={{
-                          color: (val as number) <= 30 ? "#8bf7c4"
-                            : (val as number) <= 60 ? "#f7e88b"
-                            : "#f78b8b"
-                        }}>{val}%</span>
+                      ["Overclaiming", (paper as any).bs_score.overclaiming, "Does language match results?"],
+                      ["Rigor", (paper as any).bs_score.rigor, "Methodology & baselines"],
+                      ["Novelty", (paper as any).bs_score.novelty, "Is the idea actually new?"],
+                      ["Credibility", (paper as any).bs_score.credibility, "Authors & institution"],
+                      ["Reproducibility", (paper as any).bs_score.reproducibility, "Code, data, clarity"],
+                    ].map(([label, val, desc]) => (
+                      <div key={label as string}>
+                        <div className="flex items-center justify-between text-[9px] mb-0.5">
+                          <span className="text-text">{label}</span>
+                          <span style={{
+                            color: (val as number) <= 25 ? "#8bf7c4"
+                              : (val as number) <= 50 ? "#f7e88b"
+                              : (val as number) <= 75 ? "#f7a08b"
+                              : "#f78b8b"
+                          }}>{val}%</span>
+                        </div>
+                        <div className="h-1 bg-surface-2 w-full">
+                          <div
+                            className="h-full transition-all"
+                            style={{
+                              width: `${val}%`,
+                              background: (val as number) <= 25 ? "#8bf7c4"
+                                : (val as number) <= 50 ? "#f7e88b"
+                                : (val as number) <= 75 ? "#f7a08b"
+                                : "#f78b8b"
+                            }}
+                          />
+                        </div>
+                        <p className="text-[8px] text-text-dim">{desc}</p>
                       </div>
                     ))}
                   </div>

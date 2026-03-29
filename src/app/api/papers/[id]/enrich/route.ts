@@ -304,25 +304,38 @@ export async function POST(
       try {
         const bsMsg = await client.messages.create({
           model: "claude-opus-4-6",
-          max_tokens: 512,
+          max_tokens: 700,
           messages: [
             {
               role: "user",
-              content: `Rate this academic paper on a bullshit scale. Return ONLY valid JSON with this exact structure:
+              content: `You are a ruthlessly honest academic paper reviewer. Rate this paper's bullshit level. Return ONLY valid JSON:
 {
-  "overall": <0-100 integer, 0 = groundbreaking legit work, 100 = total bullshit>,
-  "novelty": <0-100, 0 = truly novel, 100 = nothing new>,
-  "methodology": <0-100, 0 = rigorous, 100 = hand-wavy>,
-  "claims_vs_evidence": <0-100, 0 = well-supported, 100 = wild overclaims>,
-  "buzzword_density": <0-100, 0 = precise language, 100 = buzzword soup>,
-  "reproducibility": <0-100, 0 = easily reproducible, 100 = impossible to reproduce>,
-  "verdict": "<one sentence roast or praise>"
+  "overall": <0-100, weighted average of below. 0 = seminal work, 100 = pure BS>,
+  "novelty": <0-100, 0 = genuinely new idea/approach, 100 = rehash of existing work with new branding. A paper can score well here even with imperfect methodology if the IDEA is original and interesting>,
+  "rigor": <0-100, 0 = airtight methodology with proper baselines/ablations/stats, 100 = hand-wavy with cherry-picked results. A paper can score well here even if not novel, if the execution is solid>,
+  "overclaiming": <0-100, 0 = honest about limitations and scope, 100 = "revolutionary paradigm shift" for a minor tweak. This is the biggest BS signal — does the paper's language match what it actually achieved?>,
+  "credibility": <0-100, 0 = established authors at known institutions with track record in this area, 100 = unknown authors making extraordinary claims. Consider: are the authors/institutions known? Do they have relevant prior work? Are they making claims proportional to their evidence?>,
+  "reproducibility": <0-100, 0 = code+data released, clear methodology anyone could follow, 100 = vague descriptions, no code, proprietary data, impossible to verify>,
+  "verdict": "<one brutally honest sentence. Be funny if appropriate>"
 }
 
-Be honest and harsh. "Attention Is All You Need" would score ~5 overall. A paper that just combines existing methods with no insight and overclaims results would score 70-90.
+IMPORTANT scoring rules:
+- "Attention Is All You Need" = ~5 overall (novel idea, rigorous, honest claims, from credible lab)
+- A solid incremental paper with good methodology = ~25 (not novel but honest and useful)
+- Cool idea but sloppy execution = ~40 (novelty saves it somewhat)
+- Combines buzzwords with overclaiming and weak baselines = ~75
+- "We solved AGI" from random authors with no evidence = ~95
 
+The overall score should be a WEIGHTED combination:
+- Overclaiming: 30% weight (biggest BS signal)
+- Rigor: 25% weight
+- Novelty: 20% weight
+- Credibility: 15% weight
+- Reproducibility: 10% weight
+
+Authors: ${(authors as string[])?.join(", ") || "unknown"}
 Title: ${title}
-${contextForSummary.slice(0, 8000)}`,
+${contextForSummary.slice(0, 10000)}`,
             },
           ],
         });
