@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Paper } from "@/lib/supabase";
 import { humanCategory } from "@/lib/categories";
+import { decodeEntities } from "@/lib/entities";
 import { Check, Clock, ChevronRight, ChevronDown, ArrowUpDown } from "lucide-react";
 
 type SortOption = "newest" | "oldest" | "published_new" | "published_old" | "title" | "recently_read" | "most_legit" | "least_legit" | "most_interesting" | "least_interesting";
@@ -215,7 +216,7 @@ export default function PaperList({
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-xs font-medium text-text leading-tight line-clamp-2">
-                    {paper.title}
+                    {decodeEntities(paper.title)}
                   </h3>
                   <p className="text-[10px] text-text-muted mt-1 truncate">
                     {(paper.authors as string[])?.slice(0, 2).join(", ")}

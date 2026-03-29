@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { data: papers } = await supabase
     .from("papers")
-    .select("id, title, abstract, authors, categories")
+    .select("id, title, abstract, authors, categories, published")
     .order("added_at", { ascending: false });
 
   if (!papers || papers.length === 0) {
@@ -48,19 +48,21 @@ export async function POST(req: NextRequest) {
             content: `You are a ruthlessly honest academic paper reviewer. Rate this paper. Return ONLY valid JSON:
 {
   "overall": <0-100, 0 = seminal, 100 = pure BS>,
-  "novelty": <0-100, 0 = genuinely new, 100 = rehash>,
+  "novelty": <0-100, 0 = genuinely new, 100 = rehash. IMPORTANT: Judge novelty relative to the paper's publication date, not relative to today. A paper from 2018 proposing transformers for vision was novel THEN even if common now. Ask: was this a new idea at the time it was published?>,
   "rigor": <0-100, 0 = airtight, 100 = hand-wavy>,
   "overclaiming": <0-100, 0 = honest, 100 = massive overclaims>,
   "credibility": <0-100, 0 = established authors, 100 = unknown making wild claims>,
   "reproducibility": <0-100, 0 = code+data released, 100 = impossible to verify>,
   "verdict": "<one brutally honest sentence>",
   "interesting": <0-100, COMPLETELY INDEPENDENT from BS. Judge the IDEA and QUESTION, NOT execution. Fascinating question with bad execution = high interesting. Perfect execution on boring incremental work = low interesting. Would you want to discuss this over coffee?>,
-  "interesting_why": "<one sentence on why the IDEA is or isn't compelling>"
+  "interesting_why": "<one sentence on why the IDEA is or isn't compelling>",
+  "legitness_why": "<one sentence explaining the legitness/credibility assessment>"
 }
 
 Weighted BS: overclaiming 30%, rigor 25%, novelty 20%, credibility 15%, reproducibility 10%.
 Judge each paper purely on its own merits.
 
+Published: ${paper.published || "unknown"}
 Authors: ${(paper.authors as string[])?.join(", ") || "unknown"}
 Title: ${paper.title}
 Abstract: ${(paper.abstract || "").slice(0, 3000)}`,

@@ -110,6 +110,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
@@ -120,15 +121,22 @@ export default function LoginPage() {
     setSuccess("");
     setLoading(true);
 
-    if (mode === "signup" && password !== confirmPassword) {
-      setError("Passwords don't match");
-      setLoading(false);
-      return;
+    if (mode === "signup") {
+      if (password !== confirmPassword) {
+        setError("Passwords don't match");
+        setLoading(false);
+        return;
+      }
+      if (!username.trim() || username.trim().length < 3) {
+        setError("Username must be at least 3 characters");
+        setLoading(false);
+        return;
+      }
     }
 
     const result = mode === "signin"
       ? await signIn(email, password)
-      : await signUp(email, password);
+      : await signUp(email, password, username.trim().toLowerCase());
 
     if (result.error) {
       setError(result.error);
@@ -306,12 +314,21 @@ export default function LoginPage() {
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
               <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.replace(/[^a-z0-9_-]/gi, "").toLowerCase())}
+                placeholder="Username"
+                required
+                autoFocus
+                minLength={3}
+                className="w-full bg-bg border border-border px-4 py-3 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
+              />
+              <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email"
                 required
-                autoFocus
                 className="w-full bg-bg border border-border px-4 py-3 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
               />
               <input

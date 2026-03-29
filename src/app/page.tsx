@@ -22,7 +22,8 @@ import ResizeHandle from "@/components/ResizeHandle";
 import PaperGraph from "@/components/PaperGraph";
 import LoginPage from "@/components/LoginPage";
 import { useAuth } from "@/components/AuthProvider";
-import { LogOut } from "lucide-react";
+import { LogOut, Compass, User } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   const { user, loading: authLoading, signOut, getToken } = useAuth();
@@ -71,6 +72,34 @@ function AppContent({ user, signOut, getToken }: { user: { id: string; email?: s
   const [detailCollapsed, setDetailCollapsed] = useState(false);
   const [readerCollapsed, setReaderCollapsed] = useState(false);
   const [detailWidth, setDetailWidth] = useState(420);
+  const [username, setUsername] = useState<string | null>(null);
+
+  // Check if user has a profile, auto-create from signup metadata if needed
+  useEffect(() => {
+    const checkProfile = async () => {
+      try {
+        const res = await authFetch("/api/profiles/me");
+        const data = await res.json();
+        if (data.profile) {
+          setUsername(data.profile.username);
+          return;
+        }
+        // Auto-create profile from signup metadata
+        const metaUsername = (user as any).user_metadata?.username;
+        if (metaUsername) {
+          const createRes = await authFetch("/api/profiles/me", {
+            method: "PATCH",
+            body: JSON.stringify({ username: metaUsername }),
+          });
+          const createData = await createRes.json();
+          if (createData.profile) {
+            setUsername(createData.profile.username);
+          }
+        }
+      } catch {}
+    };
+    checkProfile();
+  }, []);
 
   // Fetch all papers
   const fetchPapers = useCallback(async () => {
@@ -261,8 +290,6 @@ function AppContent({ user, signOut, getToken }: { user: { id: string; email?: s
 
   const stats = {
     total: papers.length,
-    read: papers.filter((p) => p.is_read).length,
-    connections: connections.length,
   };
 
   return (
@@ -286,7 +313,7 @@ function AppContent({ user, signOut, getToken }: { user: { id: string; email?: s
                 Adding paper...
               </span>
             ) : (
-              <>{stats.total} papers / {stats.read} read / {stats.connections} connections</>
+              view === "graph" ? `${stats.total} papers — Graph view` : `${stats.total} papers — List view`
             )}
           </span>
         </div>
@@ -345,6 +372,22 @@ function AppContent({ user, signOut, getToken }: { user: { id: string; email?: s
             )}
             Add Paper
           </button>
+          <Link
+            href="/explore"
+            className="flex items-center gap-1.5 px-3 py-2 text-[10px] tracking-wider uppercase text-text-dim hover:text-accent border border-border hover:border-border-hover transition-colors"
+          >
+            <Compass size={12} />
+            Explore
+          </Link>
+          {username && (
+            <Link
+              href={`/profile/${username}`}
+              className="flex items-center gap-1.5 px-3 py-2 text-[10px] tracking-wider uppercase text-text-dim hover:text-accent border border-border hover:border-border-hover transition-colors"
+            >
+              <User size={12} />
+              Profile
+            </Link>
+          )}
           <button
             onClick={signOut}
             className="p-2.5 text-text-dim hover:text-text transition-colors"
@@ -404,6 +447,29 @@ function AppContent({ user, signOut, getToken }: { user: { id: string; email?: s
           {loading ? (
             <div className="w-full h-full flex items-center justify-center">
               <Loader2 size={24} className="animate-spin text-text-dim" />
+            </div>
+          ) : !loading && papers.length === 0 && !adding ? (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="text-center max-w-md px-6">
+                <img src="/graphene.png" alt="Graphene" className="w-12 h-12 invert mx-auto mb-4 opacity-40" />
+                <h2 className="text-lg font-bold text-accent tracking-tight mb-2">
+                  Welcome to Graphene
+                </h2>
+                <p className="text-xs text-text-dim leading-relaxed mb-6">
+                  Add your first paper to get started. Paste an arXiv link or any PDF URL
+                  and we'll pull in metadata, generate an AI summary, and score its legitimacy.
+                </p>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-accent text-bg text-xs font-medium tracking-wider uppercase hover:bg-text transition-colors mx-auto"
+                >
+                  <Plus size={14} />
+                  Add your first paper
+                </button>
+                <p className="text-[10px] text-text-dim mt-4">
+                  Try: <button onClick={() => { navigator.clipboard.writeText("2706.03762"); setShowAddModal(true); }} className="text-accent hover:underline">2706.03762</button> (Attention Is All You Need)
+                </p>
+              </div>
             </div>
           ) : view === "graph" ? (
             <PaperGraph
@@ -501,6 +567,7 @@ function AppContent({ user, signOut, getToken }: { user: { id: string; email?: s
         onClose={() => setShowAddModal(false)}
         onAdd={handleAddPaper}
       />
+
     </div>
   );
 }

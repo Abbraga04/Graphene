@@ -314,7 +314,7 @@ export async function POST(
               content: `You are a ruthlessly honest academic paper reviewer. Rate this paper. Return ONLY valid JSON:
 {
   "overall": <0-100, weighted average of below. 0 = seminal work, 100 = pure BS>,
-  "novelty": <0-100, 0 = genuinely new idea/approach, 100 = rehash of existing work with new branding>,
+  "novelty": <0-100, 0 = genuinely new idea/approach, 100 = rehash of existing work with new branding. IMPORTANT: Judge novelty relative to the paper's publication date, not relative to today. A paper from 2018 proposing transformers for vision was novel THEN even if common now. Ask: was this a new idea at the time it was published?>,
   "rigor": <0-100, 0 = airtight methodology, 100 = hand-wavy with cherry-picked results>,
   "overclaiming": <0-100, 0 = honest about limitations, 100 = "revolutionary paradigm shift" for a minor tweak>,
   "credibility": <0-100, 0 = established authors with track record, 100 = unknown authors making extraordinary claims>,
@@ -334,6 +334,7 @@ The overall BS score should be a WEIGHTED combination:
 
 Judge each paper purely on its own merits. Do not anchor to any specific papers or preconceived scores.
 
+Published: ${published || "unknown"}
 Authors: ${(authors as string[])?.join(", ") || "unknown"}
 Title: ${title}
 ${contextForSummary.slice(0, 10000)}`,

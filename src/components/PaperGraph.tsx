@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useMemo, useCallback } from "react";
 import { Paper, PaperConnection } from "@/lib/supabase";
+import { decodeEntities } from "@/lib/entities";
 
 let pretextModule: typeof import("@chenglou/pretext") | null = null;
 const loadPretext = async () => {
@@ -50,7 +51,7 @@ function buildNodes(papers: Paper[], connections: PaperConnection[], W: number, 
 
     return {
       id: p.id,
-      title: p.title,
+      title: decodeEntities(p.title),
       category: cat,
       colorIdx,
       x: W / 2 + Math.cos(angle) * dist,
@@ -227,7 +228,24 @@ export default function PaperGraph({
       const mx = e.clientX - rect.left, my = e.clientY - rect.top;
       const p = panRef.current;
       const zoom = e.deltaY < 0 ? 1.1 : 0.9;
-      const newScale = Math.max(0.3, Math.min(3, p.scale * zoom));
+
+      // Calculate min zoom so all nodes fit on screen with padding
+      const nodes = nodesRef.current;
+      let minScale = 0.3;
+      if (nodes.length > 0) {
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const n of nodes) {
+          if (n.x < minX) minX = n.x;
+          if (n.x > maxX) maxX = n.x;
+          if (n.y < minY) minY = n.y;
+          if (n.y > maxY) maxY = n.y;
+        }
+        const graphW = maxX - minX + 100; // padding
+        const graphH = maxY - minY + 100;
+        minScale = Math.max(0.3, Math.min(rect.width / graphW, rect.height / graphH) * 0.9);
+      }
+
+      const newScale = Math.max(minScale, Math.min(3, p.scale * zoom));
       p.x = mx - (mx - p.x) * (newScale / p.scale);
       p.y = my - (my - p.y) * (newScale / p.scale);
       p.scale = newScale;
@@ -341,60 +359,85 @@ export default function PaperGraph({
         ctx.stroke();
       }
 
-      // Nodes
+      // Nodes — draw all dots first, then labels on top
       for (const n of nodes) {
         const isSel = n.id === selectedRef.current;
         const isHov = n.id === hoveredRef.current;
-        const r = isSel ? 9 : isHov ? 8 : 6;
+        const r = isSel ? 10 : isHov ? 8 : 5;
 
-        // Glow
+        // Outer glow ring
         if (isSel || isHov) {
+          const grad = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, r + 12);
+          grad.addColorStop(0, "rgba(255,255,255,0.1)");
+          grad.addColorStop(1, "rgba(255,255,255,0)");
           ctx.beginPath();
-          ctx.arc(n.x, n.y, r + 6, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(255,255,255,0.06)";
+          ctx.arc(n.x, n.y, r + 12, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
           ctx.fill();
         }
 
-        // Dot
+        // Dot with gradient
+        const dotGrad = ctx.createRadialGradient(n.x - r * 0.3, n.y - r * 0.3, 0, n.x, n.y, r);
+        dotGrad.addColorStop(0, isSel ? "#ffffff" : isHov ? "#dddddd" : "#999999");
+        dotGrad.addColorStop(1, isSel ? "#cccccc" : isHov ? "#aaaaaa" : "#666666");
         ctx.beginPath();
         ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = isSel ? "#fff" : "#aaa";
+        ctx.fillStyle = dotGrad;
         ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.3)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
+      }
 
-        // Label — measure with canvas, truncate smartly
+      // Labels — always below, consistent position
+      for (const n of nodes) {
+        const isSel = n.id === selectedRef.current;
+        const isHov = n.id === hoveredRef.current;
+        const active = isSel || isHov;
+        const r = isSel ? 10 : isHov ? 8 : 5;
+
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
 
-        if (isSel || isHov) {
-          // Full label in pill
-          const fs = Math.max(11, 11 / p.scale);
-          ctx.font = `600 ${fs}px JetBrains Mono, monospace`;
-          const maxW = 250;
-          let label = n.title;
-          while (ctx.measureText(label).width > maxW && label.length > 10) {
-            label = label.slice(0, -4) + "...";
-          }
+        const fs = active ? Math.max(11, 11 / p.scale) : Math.max(8, 8 / p.scale);
+        ctx.font = `${active ? "600 " : ""}${fs}px JetBrains Mono, monospace`;
+        const maxW = active ? 220 : 90;
+        let label = n.title;
+        while (ctx.measureText(label).width > maxW && label.length > 8) {
+          label = label.slice(0, -4) + "...";
+        }
+
+        const labelY = n.y + r + 5;
+
+        if (active) {
+          // Background pill below node
           const tw = ctx.measureText(label).width;
           const px = 6, py = 3;
+          ctx.fillStyle = "rgba(0,0,0,0.88)";
+          const rx = n.x - tw / 2 - px;
+          const ry2 = labelY - py;
+          const rw = tw + px * 2;
+          const rh = fs + py * 2;
+          // Rounded rect
+          const cr = 3;
+          ctx.beginPath();
+          ctx.moveTo(rx + cr, ry2);
+          ctx.lineTo(rx + rw - cr, ry2);
+          ctx.quadraticCurveTo(rx + rw, ry2, rx + rw, ry2 + cr);
+          ctx.lineTo(rx + rw, ry2 + rh - cr);
+          ctx.quadraticCurveTo(rx + rw, ry2 + rh, rx + rw - cr, ry2 + rh);
+          ctx.lineTo(rx + cr, ry2 + rh);
+          ctx.quadraticCurveTo(rx, ry2 + rh, rx, ry2 + rh - cr);
+          ctx.lineTo(rx, ry2 + cr);
+          ctx.quadraticCurveTo(rx, ry2, rx + cr, ry2);
+          ctx.closePath();
+          ctx.fill();
 
-          ctx.fillStyle = "rgba(0,0,0,0.92)";
-          ctx.fillRect(n.x - tw / 2 - px, n.y - r - fs - py * 2 - 6, tw + px * 2, fs + py * 2);
-          ctx.fillStyle = "#fff";
-          ctx.fillText(label, n.x, n.y - r - fs - py - 6);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(label, n.x, labelY);
         } else {
-          // Short label
-          const fs = Math.max(8, 8 / p.scale);
-          ctx.font = `${fs}px JetBrains Mono, monospace`;
-          const maxW = 100;
-          let label = n.title;
-          while (ctx.measureText(label).width > maxW && label.length > 5) {
-            label = label.slice(0, -4) + "...";
-          }
-          ctx.fillStyle = "rgba(255,255,255,0.5)";
-          ctx.fillText(label, n.x, n.y + r + 3);
+          // Simple text shadow + label
+          ctx.fillStyle = "rgba(0,0,0,0.6)";
+          ctx.fillText(label, n.x + 0.5, labelY + 0.5);
+          ctx.fillStyle = "rgba(255,255,255,0.55)";
+          ctx.fillText(label, n.x, labelY);
         }
       }
 

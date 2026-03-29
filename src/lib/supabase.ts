@@ -12,6 +12,7 @@ export function createBrowserClient() {
   return createClient(supabaseUrl, supabaseAnonKey);
 }
 
+// Paper as returned by the API (shared paper + user-specific data merged)
 export type Paper = {
   id: string;
   title: string;
@@ -24,10 +25,11 @@ export type Paper = {
   summary: string | null;
   embedding: number[] | null;
   added_at: string;
-  read_at: string | null;
+  is_public: boolean;
+  // User-specific (merged from user_papers join)
   is_read: boolean;
+  read_at: string | null;
   notes: string;
-  user_id?: string;
 };
 
 export type PaperConnection = {

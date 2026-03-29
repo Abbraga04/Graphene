@@ -38,15 +38,23 @@ export async function POST(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
 
-  // Verify paper exists and is public (or owned by user)
+  // Verify paper exists and is public (or in user's library)
   const { data: paper } = await supabase
     .from("papers")
-    .select("id, user_id, is_public")
+    .select("id, is_public")
     .eq("id", id)
     .single();
 
   if (!paper) return NextResponse.json({ error: "Paper not found" }, { status: 404 });
-  if (!paper.is_public && paper.user_id !== user.id) {
+
+  const { data: inLibrary } = await supabase
+    .from("user_papers")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("paper_id", id)
+    .maybeSingle();
+
+  if (!paper.is_public && !inLibrary) {
     return NextResponse.json({ error: "Paper is not public" }, { status: 403 });
   }
 

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   // Get public papers
   const { data: papers, error } = await supabase
     .from("papers")
-    .select("id, title, authors, abstract, categories, published, added_at, bs_score, user_id, source_url")
+    .select("id, title, authors, abstract, categories, published, added_at, bs_score, source_url")
     .eq("is_public", true)
     .order("added_at", { ascending: false })
     .range(offset, offset + limit - 1);
@@ -44,26 +44,44 @@ export async function GET(req: NextRequest) {
     userStars = new Set((starred || []).map((s) => s.paper_id));
   }
 
-  // Get profile info for paper owners
-  const ownerIds = [...new Set(papers.map((p) => p.user_id).filter(Boolean))];
+  // Find who first added each paper (the "contributor")
+  const { data: firstAdders } = await supabase
+    .from("user_papers")
+    .select("paper_id, user_id, added_at")
+    .in("paper_id", paperIds)
+    .order("added_at", { ascending: true });
+
+  // Get first adder per paper
+  const firstAdderMap: Record<string, string> = {};
+  (firstAdders || []).forEach((ua) => {
+    if (!firstAdderMap[ua.paper_id]) {
+      firstAdderMap[ua.paper_id] = ua.user_id;
+    }
+  });
+
+  // Get profiles for first adders
+  const adderIds = [...new Set(Object.values(firstAdderMap))];
   let profileMap: Record<string, { username: string; display_name: string | null }> = {};
-  if (ownerIds.length > 0) {
+  if (adderIds.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, username, display_name")
-      .in("id", ownerIds);
+      .in("id", adderIds);
     (profiles || []).forEach((p) => {
       profileMap[p.id] = { username: p.username, display_name: p.display_name };
     });
   }
 
-  // Enrich papers with star data and owner profile
-  let enriched = papers.map((p) => ({
-    ...p,
-    star_count: countMap[p.id] || 0,
-    starred: userStars.has(p.id),
-    owner: p.user_id ? profileMap[p.user_id] || null : null,
-  }));
+  // Enrich papers with star data and contributor profile
+  let enriched = papers.map((p) => {
+    const adderId = firstAdderMap[p.id];
+    return {
+      ...p,
+      star_count: countMap[p.id] || 0,
+      starred: userStars.has(p.id),
+      owner: adderId ? profileMap[adderId] || null : null,
+    };
+  });
 
   // Sort
   if (sort === "trending") {
@@ -71,7 +89,6 @@ export async function GET(req: NextRequest) {
   } else if (sort === "stars") {
     enriched.sort((a, b) => b.star_count - a.star_count);
   }
-  // "recent" is already sorted by added_at DESC from the query
 
   return NextResponse.json({ papers: enriched });
 }

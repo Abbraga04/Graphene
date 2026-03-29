@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Paper, ChatMessage } from "@/lib/supabase";
 import { humanCategory } from "@/lib/categories";
+import { decodeEntities } from "@/lib/entities";
 import {
   X,
   BookOpen,
@@ -159,7 +160,7 @@ export default function PaperDetail({
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <h2 className="text-sm font-medium text-accent leading-tight">
-              {paper.title}
+              {decodeEntities(paper.title)}
             </h2>
             <p className="text-[10px] text-text mt-1 line-clamp-2">
               {(() => {
@@ -314,7 +315,7 @@ export default function PaperDetail({
                     {(paper as any).bs_score.interesting}
                   </p>
                   <p className="text-[9px] text-text-dim mt-1 italic leading-tight">
-                    {(paper as any).bs_score.interesting_why}
+                    {decodeEntities((paper as any).bs_score.interesting_why || "")}
                   </p>
                 </div>
                 <div className="flex-1 border border-border p-3 text-center flex flex-col justify-center">
@@ -333,7 +334,7 @@ export default function PaperDetail({
                           {legit}
                         </p>
                         <p className="text-[9px] text-text-dim mt-1 italic leading-tight">
-                          {(paper as any).bs_score.legitness_why || (legit >= 85 ? "Seminal"
+                          {decodeEntities((paper as any).bs_score.legitness_why || "") || (legit >= 85 ? "Seminal"
                             : legit >= 70 ? "Legit"
                             : legit >= 50 ? "Decent"
                             : legit >= 30 ? "Questionable"
@@ -355,7 +356,7 @@ export default function PaperDetail({
                 </h3>
                 <div className="border border-border p-3 space-y-2">
                   <p className="text-[10px] text-text italic">
-                    &quot;{(paper as any).bs_score.verdict}&quot;
+                    &quot;{decodeEntities((paper as any).bs_score.verdict || "")}&quot;
                   </p>
                   <div className="space-y-1.5 mt-2">
                     {[
@@ -429,7 +430,7 @@ export default function PaperDetail({
                   Abstract
                 </h3>
                 <p className="text-xs text-text leading-relaxed">
-                  {paper.abstract}
+                  {decodeEntities(paper.abstract)}
                 </p>
               </div>
             )}

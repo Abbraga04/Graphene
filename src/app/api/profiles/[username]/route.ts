@@ -37,26 +37,30 @@ export async function GET(
     starredPapers = papers || [];
   }
 
-  // Get their public papers
-  const { data: publicPapers } = await supabase
-    .from("papers")
-    .select("id, title, authors, categories, published, bs_score")
-    .eq("user_id", profile.id)
-    .eq("is_public", true)
-    .order("added_at", { ascending: false })
-    .limit(50);
+  // Get their public papers (papers in their library that are marked public)
+  const { data: userPaperLinks } = await supabase
+    .from("user_papers")
+    .select("paper_id")
+    .eq("user_id", profile.id);
+
+  let publicPapers: any[] = [];
+  if (userPaperLinks && userPaperLinks.length > 0) {
+    const paperIds = userPaperLinks.map((up) => up.paper_id);
+    const { data: papers } = await supabase
+      .from("papers")
+      .select("id, title, authors, categories, published, bs_score")
+      .in("id", paperIds)
+      .eq("is_public", true)
+      .order("added_at", { ascending: false })
+      .limit(50);
+    publicPapers = papers || [];
+  }
 
   // Count stats
   const { count: totalStarsGiven } = await supabase
     .from("paper_stars")
     .select("*", { count: "exact", head: true })
     .eq("user_id", profile.id);
-
-  const { count: totalPapersPublic } = await supabase
-    .from("papers")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", profile.id)
-    .eq("is_public", true);
 
   return NextResponse.json({
     profile: {
@@ -67,10 +71,10 @@ export async function GET(
       created_at: profile.created_at,
     },
     starred_papers: starredPapers,
-    public_papers: publicPapers || [],
+    public_papers: publicPapers,
     stats: {
       stars_given: totalStarsGiven || 0,
-      public_papers: totalPapersPublic || 0,
+      public_papers: publicPapers.length,
     },
   });
 }
