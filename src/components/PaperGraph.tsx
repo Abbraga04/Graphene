@@ -180,22 +180,26 @@ export default function PaperGraph({
       const isSelected = node.id === selectedRef.current;
       const isHovered = node.id === hoveredRef.current;
       const showLabel = isSelected || isHovered;
-      const color = getClusterColor(node.primaryCat);
-      const r = isSelected ? 7 : isHovered ? 6 : 4;
+      const r = isSelected ? 8 : isHovered ? 7 : 5;
 
       // Glow
       if (isSelected || isHovered) {
         ctx.beginPath();
-        ctx.arc(x, y, r + 4, 0, 2 * Math.PI);
-        ctx.fillStyle = color.fill.replace("0.07", "0.25");
+        ctx.arc(x, y, r + 5, 0, 2 * Math.PI);
+        ctx.fillStyle = "rgba(255,255,255,0.1)";
         ctx.fill();
       }
 
       // Node dot
       ctx.beginPath();
       ctx.arc(x, y, r, 0, 2 * Math.PI);
-      ctx.fillStyle = isSelected ? "#ffffff" : node.isRead ? color.node : color.node + "99";
+      ctx.fillStyle = isSelected ? "#ffffff" : node.isRead ? "#cccccc" : "#888888";
       ctx.fill();
+
+      // Border
+      ctx.strokeStyle = isSelected ? "#ffffff" : "rgba(255,255,255,0.3)";
+      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.stroke();
 
       // Label
       ctx.textAlign = "center";
@@ -249,7 +253,7 @@ export default function PaperGraph({
         nodeCanvasObject={paintNode}
         nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D) => {
           ctx.beginPath();
-          ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
+          ctx.arc(node.x, node.y, 25, 0, 2 * Math.PI);
           ctx.fillStyle = color;
           ctx.fill();
         }}
