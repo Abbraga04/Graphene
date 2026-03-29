@@ -226,9 +226,14 @@ export default function PaperGraph({
         linkColor={() => "rgba(255,255,255,0.08)"}
         linkWidth={1}
         backgroundColor="#000000"
-        cooldownTime={2000}
-        d3AlphaDecay={0.03}
-        d3VelocityDecay={0.4}
+        cooldownTime={3000}
+        d3AlphaDecay={0.02}
+        d3VelocityDecay={0.3}
+        d3Force="charge"
+        d3ForceConfig={{
+          charge: { strength: -60, distanceMax: 200 },
+          link: { distance: 40 },
+        }}
       />
     </div>
   );

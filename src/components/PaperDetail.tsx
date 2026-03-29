@@ -225,24 +225,31 @@ export default function PaperDetail({
                   </p>
                 </div>
                 <div className="flex-1 border border-border p-3 text-center">
-                  <p className="text-[9px] text-text-dim tracking-[0.2em] uppercase mb-1">BS Level</p>
-                  <p className="text-2xl font-bold" style={{
-                    color: (paper as any).bs_score.overall <= 20 ? "#8bf7c4"
-                      : (paper as any).bs_score.overall <= 40 ? "#b8f78b"
-                      : (paper as any).bs_score.overall <= 60 ? "#f7e88b"
-                      : (paper as any).bs_score.overall <= 80 ? "#f7a08b"
-                      : "#f78b8b"
-                  }}>
-                    {(paper as any).bs_score.overall}%
-                  </p>
-                  <p className="text-[9px] text-text-dim mt-1">
-                    {(paper as any).bs_score.overall <= 15 ? "Seminal"
-                      : (paper as any).bs_score.overall <= 30 ? "Legit"
-                      : (paper as any).bs_score.overall <= 50 ? "Decent"
-                      : (paper as any).bs_score.overall <= 70 ? "Questionable"
-                      : (paper as any).bs_score.overall <= 85 ? "Smells like BS"
-                      : "Pure BS"}
-                  </p>
+                  <p className="text-[9px] text-text-dim tracking-[0.2em] uppercase mb-1">Legitness</p>
+                  {(() => {
+                    const legit = 100 - (paper as any).bs_score.overall;
+                    return (
+                      <>
+                        <p className="text-2xl font-bold" style={{
+                          color: legit >= 80 ? "#8bf7c4"
+                            : legit >= 60 ? "#b8f78b"
+                            : legit >= 40 ? "#f7e88b"
+                            : legit >= 20 ? "#f7a08b"
+                            : "#f78b8b"
+                        }}>
+                          {legit}
+                        </p>
+                        <p className="text-[9px] text-text-dim mt-1">
+                          {legit >= 85 ? "Seminal"
+                            : legit >= 70 ? "Legit"
+                            : legit >= 50 ? "Decent"
+                            : legit >= 30 ? "Questionable"
+                            : legit >= 15 ? "Sussy"
+                            : "Pure BS"}
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -251,7 +258,7 @@ export default function PaperDetail({
             {(paper as any).bs_score && (
               <div>
                 <h3 className="text-[10px] text-text-dim tracking-[0.2em] uppercase mb-2">
-                  BS Breakdown
+                  Breakdown
                 </h3>
                 <div className="border border-border p-3 space-y-2">
                   <p className="text-[10px] text-text italic">
@@ -259,30 +266,30 @@ export default function PaperDetail({
                   </p>
                   <div className="space-y-1.5 mt-2">
                     {[
-                      ["Overclaiming", (paper as any).bs_score.overclaiming, "Does language match results?"],
-                      ["Rigor", (paper as any).bs_score.rigor, "Methodology & baselines"],
-                      ["Novelty", (paper as any).bs_score.novelty, "Is the idea actually new?"],
-                      ["Credibility", (paper as any).bs_score.credibility, "Authors & institution"],
-                      ["Reproducibility", (paper as any).bs_score.reproducibility, "Code, data, clarity"],
+                      ["Honesty", 100 - ((paper as any).bs_score.overclaiming || 0), "Claims match evidence"],
+                      ["Rigor", 100 - ((paper as any).bs_score.rigor || 0), "Methodology & baselines"],
+                      ["Novelty", 100 - ((paper as any).bs_score.novelty || 0), "Original ideas"],
+                      ["Credibility", 100 - ((paper as any).bs_score.credibility || 0), "Authors & institution"],
+                      ["Reproducibility", 100 - ((paper as any).bs_score.reproducibility || 0), "Code, data, clarity"],
                     ].map(([label, val, desc]) => (
                       <div key={label as string}>
                         <div className="flex items-center justify-between text-[9px] mb-0.5">
                           <span className="text-text">{label}</span>
                           <span style={{
-                            color: (val as number) <= 25 ? "#8bf7c4"
-                              : (val as number) <= 50 ? "#f7e88b"
-                              : (val as number) <= 75 ? "#f7a08b"
+                            color: (val as number) >= 75 ? "#8bf7c4"
+                              : (val as number) >= 50 ? "#f7e88b"
+                              : (val as number) >= 25 ? "#f7a08b"
                               : "#f78b8b"
-                          }}>{val}%</span>
+                          }}>{val}</span>
                         </div>
                         <div className="h-1 bg-surface-2 w-full">
                           <div
                             className="h-full transition-all"
                             style={{
                               width: `${val}%`,
-                              background: (val as number) <= 25 ? "#8bf7c4"
-                                : (val as number) <= 50 ? "#f7e88b"
-                                : (val as number) <= 75 ? "#f7a08b"
+                              background: (val as number) >= 75 ? "#8bf7c4"
+                                : (val as number) >= 50 ? "#f7e88b"
+                                : (val as number) >= 25 ? "#f7a08b"
                                 : "#f78b8b"
                             }}
                           />
