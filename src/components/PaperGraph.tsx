@@ -197,22 +197,32 @@ export default function PaperGraph({
       ctx.fillStyle = isSelected ? "#ffffff" : node.isRead ? color.node : color.node + "99";
       ctx.fill();
 
-      // Title — only on hover or selected
+      // Always show short label
+      const smallFont = Math.max(7 / globalScale, 2);
+      ctx.font = `${smallFont}px JetBrains Mono, monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      const shortLabel = node.title.length > 25 ? node.title.slice(0, 25) + "..." : node.title;
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillText(shortLabel, x + 0.3, y + r + 2 + 0.3);
+      ctx.fillStyle = isSelected ? "#ffffff" : "#999999";
+      ctx.fillText(shortLabel, x, y + r + 2);
+
+      // Full label on hover/select
       if (showLabel) {
         const fontSize = Math.max(11 / globalScale, 4);
         ctx.font = `600 ${fontSize}px JetBrains Mono, monospace`;
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
-        const label = node.title.length > 50 ? node.title.slice(0, 50) + "..." : node.title;
+        const label = node.title.length > 55 ? node.title.slice(0, 55) + "..." : node.title;
 
-        // Background pill
         const metrics = ctx.measureText(label);
         const px = 4, py = 2;
-        ctx.fillStyle = "rgba(0,0,0,0.85)";
-        ctx.fillRect(x - metrics.width / 2 - px, y + r + 2, metrics.width + px * 2, fontSize + py * 2);
+        ctx.fillStyle = "rgba(0,0,0,0.9)";
+        ctx.fillRect(x - metrics.width / 2 - px, y - r - fontSize - py * 2 - 4, metrics.width + px * 2, fontSize + py * 2);
 
         ctx.fillStyle = "#ffffff";
-        ctx.fillText(label, x, y + r + 2 + py);
+        ctx.fillText(label, x, y - r - fontSize - py - 4);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,9 +275,9 @@ export default function PaperGraph({
         d3VelocityDecay={0.4}
         d3Force="charge"
         d3ForceConfig={{
-          charge: { strength: -80, distanceMax: 100 },
-          link: { distance: 35 },
-          center: { strength: 0.1 },
+          charge: { strength: -150, distanceMax: 150 },
+          link: { distance: 50 },
+          center: { strength: 0.08 },
         }}
       />
     </div>
