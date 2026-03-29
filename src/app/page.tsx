@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import PaperReader from "@/components/PaperReader";
+import ResizeHandle from "@/components/ResizeHandle";
 
 const PaperGraph = lazy(() => import("@/components/PaperGraph"));
 
@@ -31,6 +32,8 @@ export default function Home() {
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState<"all" | "read" | "unread">("all");
   const [searchLocal, setSearchLocal] = useState("");
+  const [listWidth, setListWidth] = useState(320);
+  const [detailWidth, setDetailWidth] = useState(420);
 
   // Fetch all papers
   const fetchPapers = useCallback(async () => {
@@ -203,15 +206,22 @@ export default function Home() {
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - paper list */}
         {view === "list" && (
-          <div className="w-80 border-r border-border shrink-0 overflow-hidden">
-            <PaperList
-              papers={filteredPapers}
-              selectedId={selectedPaperId}
-              onSelect={selectPaper}
-              filter={filter}
-              onFilterChange={setFilter}
+          <>
+            <div style={{ width: listWidth }} className="shrink-0 overflow-hidden">
+              <PaperList
+                papers={filteredPapers}
+                selectedId={selectedPaperId}
+                onSelect={selectPaper}
+                filter={filter}
+                onFilterChange={setFilter}
+              />
+            </div>
+            <ResizeHandle
+              onResize={(delta) =>
+                setListWidth((w) => Math.max(200, Math.min(600, w + delta)))
+              }
             />
-          </div>
+          </>
         )}
 
         {/* Main view */}
@@ -254,18 +264,25 @@ export default function Home() {
 
         {/* Detail panel */}
         {selectedPaper && (
-          <div className="w-96 border-l border-border shrink-0 overflow-hidden">
-            <PaperDetail
-              paper={selectedPaper}
-              messages={chatMessages}
-              onClose={() => {
-                setSelectedPaperId(null);
-                setSelectedPaper(null);
-              }}
-              onToggleRead={handleToggleRead}
-              onUpdateNotes={handleUpdateNotes}
+          <>
+            <ResizeHandle
+              onResize={(delta) =>
+                setDetailWidth((w) => Math.max(280, Math.min(700, w - delta)))
+              }
             />
-          </div>
+            <div style={{ width: detailWidth }} className="shrink-0 overflow-hidden">
+              <PaperDetail
+                paper={selectedPaper}
+                messages={chatMessages}
+                onClose={() => {
+                  setSelectedPaperId(null);
+                  setSelectedPaper(null);
+                }}
+                onToggleRead={handleToggleRead}
+                onUpdateNotes={handleUpdateNotes}
+              />
+            </div>
+          </>
         )}
       </div>
 
