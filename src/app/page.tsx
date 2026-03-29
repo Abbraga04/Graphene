@@ -15,6 +15,8 @@ import {
   FileText,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 
 import PaperReader from "@/components/PaperReader";
@@ -36,6 +38,7 @@ export default function Home() {
   const [searchLocal, setSearchLocal] = useState("");
   const [listWidth, setListWidth] = useState(320);
   const [listCollapsed, setListCollapsed] = useState(false);
+  const [detailCollapsed, setDetailCollapsed] = useState(false);
   const [detailWidth, setDetailWidth] = useState(420);
 
   // Fetch all papers
@@ -368,22 +371,45 @@ export default function Home() {
         {/* Detail panel */}
         {selectedPaper && (
           <>
-            <ResizeHandle
-              onResize={(delta) =>
-                setDetailWidth((w) => Math.max(280, Math.min(700, w - delta)))
-              }
-            />
-            <div style={{ width: detailWidth }} className="shrink-0 overflow-hidden">
-              <PaperDetail
-                paper={selectedPaper}
-                messages={chatMessages}
-                onClose={() => {
-                  setSelectedPaperId(null);
-                  setSelectedPaper(null);
-                }}
-                onToggleRead={handleToggleRead}
-                onUpdateNotes={handleUpdateNotes}
-              />
+            <div className="shrink-0 flex flex-col">
+              <button
+                onClick={() => setDetailCollapsed((c) => !c)}
+                className="px-1 py-2 hover:bg-surface-2 transition-colors text-text-dim hover:text-text"
+                title={detailCollapsed ? "Show detail" : "Hide detail"}
+              >
+                {detailCollapsed ? (
+                  <PanelRightOpen size={14} />
+                ) : (
+                  <PanelRightClose size={14} />
+                )}
+              </button>
+              {!detailCollapsed && (
+                <div className="flex-1">
+                  <ResizeHandle
+                    onResize={(delta) =>
+                      setDetailWidth((w) => Math.max(280, Math.min(700, w - delta)))
+                    }
+                  />
+                </div>
+              )}
+            </div>
+            <div
+              style={{ width: detailCollapsed ? 0 : detailWidth }}
+              className="shrink-0 overflow-hidden transition-[width] duration-200"
+            >
+              <div style={{ width: detailWidth }} className="h-full">
+                <PaperDetail
+                  paper={selectedPaper}
+                  messages={chatMessages}
+                  onClose={() => {
+                    setSelectedPaperId(null);
+                    setSelectedPaper(null);
+                    setDetailCollapsed(false);
+                  }}
+                  onToggleRead={handleToggleRead}
+                  onUpdateNotes={handleUpdateNotes}
+                />
+              </div>
             </div>
           </>
         )}
