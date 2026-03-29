@@ -51,6 +51,8 @@ export default function PaperGraph({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<any>(null);
+  const selectedRef = useRef(selectedPaperId);
+  selectedRef.current = selectedPaperId;
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
   useEffect(() => {
@@ -163,7 +165,7 @@ export default function PaperGraph({
     (node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
       const x = node.x as number;
       const y = node.y as number;
-      const isSelected = node.id === selectedPaperId;
+      const isSelected = node.id === selectedRef.current;
       const color = getClusterColor(node.primaryCat);
       const r = isSelected ? 6 : 4;
 
@@ -192,7 +194,8 @@ export default function PaperGraph({
       ctx.fillStyle = isSelected ? "#ffffff" : "#bbbbbb";
       ctx.fillText(label, x, y + r + 2.5);
     },
-    [selectedPaperId]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   if (papers.length === 0) {
