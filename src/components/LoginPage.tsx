@@ -64,7 +64,7 @@ export default function LoginPage() {
             {/* Left — text */}
             <div>
               <h1 className="text-5xl font-bold text-accent leading-[1.1] tracking-tight mb-6">
-                Open source research<br />
+                Open-source research<br />
                 paper management.
               </h1>
               <p className="text-base text-text-dim leading-relaxed mb-8 max-w-md">
@@ -125,37 +125,18 @@ export default function LoginPage() {
         {/* Top gradient fade */}
         <div className="h-24 bg-gradient-to-b from-bg to-surface" />
 
-        <div className="max-w-6xl mx-auto px-8 pt-8 pb-8">
+        <div className="max-w-6xl mx-auto px-8 pt-8 pb-6">
           <div className="flex items-start justify-between">
-            <div>
-              <img src="/graphene.png" alt="Graphene" className="w-7 h-7 invert mb-4" style={{ clipPath: "inset(4%)" }} />
-              <p className="text-xs text-text-dim">
-                &copy; {new Date().getFullYear()} Graphene. All rights reserved.
-              </p>
+            <div className="flex items-center gap-2">
+              <img src="/graphene.png" alt="Graphene" className="w-6 h-6 invert" style={{ clipPath: "inset(4%)" }} />
+              <span className="text-xs text-text-dim">&copy; {new Date().getFullYear()} Graphene</span>
             </div>
-            <div className="flex gap-20">
-              <div>
-                <h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-text-dim mb-4">Project</h4>
-                <div className="space-y-3">
-                  <a href="https://github.com/lance116/Graphene" target="_blank" rel="noopener noreferrer" className="block text-sm text-text-dim hover:text-text transition-colors">GitHub</a>
-                  <a href="https://github.com/lance116/Graphene/issues" target="_blank" rel="noopener noreferrer" className="block text-sm text-text-dim hover:text-text transition-colors">Issues</a>
-                  <a href="https://github.com/lance116/Graphene/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="block text-sm text-text-dim hover:text-text transition-colors">License</a>
-                </div>
-              </div>
-              <div>
-                <h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-text-dim mb-4">Stack</h4>
-                <div className="space-y-3">
-                  <span className="block text-sm text-text-dim">Next.js</span>
-                  <span className="block text-sm text-text-dim">Supabase</span>
-                  <span className="block text-sm text-text-dim">Claude Opus 4.6</span>
-                </div>
-              </div>
-            </div>
+            <a href="https://github.com/lance116/Graphene" target="_blank" rel="noopener noreferrer" className="text-sm text-text-dim hover:text-text transition-colors">GitHub</a>
           </div>
         </div>
 
         {/* Big text clipped at bottom */}
-        <div className="max-w-6xl mx-auto px-8 overflow-hidden pointer-events-none select-none" style={{ height: "clamp(100px, 14vw, 180px)" }}>
+        <div className="max-w-6xl mx-auto px-8 overflow-hidden pointer-events-none select-none" style={{ height: "clamp(70px, 10vw, 130px)" }}>
           <p
             className="font-bold leading-[0.82] text-white/[0.04]"
             style={{ fontSize: "clamp(130px, 16vw, 260px)", letterSpacing: "-0.03em" }}
