@@ -12,21 +12,37 @@ function GithubIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-// Draw hexagon aperture shape procedurally
-function drawHexAperture(ctx: CanvasRenderingContext2D, cx: number, cy: number, outerR: number, innerR: number, rotation: number) {
+// Draw hexagonal aperture outline
+function drawHexOutline(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, rotation: number, lineWidth: number) {
   const sides = 6;
-  for (let i = 0; i < sides; i++) {
-    const a1 = (Math.PI * 2 * i) / sides + rotation;
-    const a2 = (Math.PI * 2 * (i + 1)) / sides + rotation;
-    const gap = 0.04; // gap between blades
+  // Outer hex
+  ctx.beginPath();
+  for (let i = 0; i <= sides; i++) {
+    const a = (Math.PI * 2 * i) / sides + rotation - Math.PI / 6;
+    const method = i === 0 ? "moveTo" : "lineTo";
+    ctx[method](cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  }
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
 
+  // Inner hex (aperture hole)
+  const innerR = r * 0.35;
+  ctx.beginPath();
+  for (let i = 0; i <= sides; i++) {
+    const a = (Math.PI * 2 * i) / sides + rotation - Math.PI / 6;
+    const method = i === 0 ? "moveTo" : "lineTo";
+    ctx[method](cx + Math.cos(a) * innerR, cy + Math.sin(a) * innerR);
+  }
+  ctx.stroke();
+
+  // Blade lines connecting outer to inner
+  for (let i = 0; i < sides; i++) {
+    const a1 = (Math.PI * 2 * i) / sides + rotation - Math.PI / 6;
+    const a2 = (Math.PI * 2 * (i + 0.5)) / sides + rotation - Math.PI / 6;
     ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a1 + gap) * outerR, cy + Math.sin(a1 + gap) * outerR);
-    ctx.lineTo(cx + Math.cos(a2 - gap) * outerR, cy + Math.sin(a2 - gap) * outerR);
-    ctx.lineTo(cx + Math.cos(a2 - gap * 2) * innerR, cy + Math.sin(a2 - gap * 2) * innerR);
-    ctx.lineTo(cx + Math.cos(a1 + gap * 2) * innerR, cy + Math.sin(a1 + gap * 2) * innerR);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r);
+    ctx.lineTo(cx + Math.cos(a2) * innerR, cy + Math.sin(a2) * innerR);
+    ctx.stroke();
   }
 }
 
@@ -42,7 +58,7 @@ function DitheredLogo() {
     canvas.width = W;
     canvas.height = H;
 
-    const bayer8 = [
+    const bayer = [
       [0,32,8,40,2,34,10,42],
       [48,16,56,24,50,18,58,26],
       [12,44,4,36,14,46,6,38],
@@ -56,57 +72,56 @@ function DitheredLogo() {
     let time = 0;
 
     const render = () => {
-      time += 0.008;
+      time += 0.006;
       ctx.clearRect(0, 0, W, H);
 
-      // Draw layers to offscreen canvas
       const tmp = document.createElement("canvas");
       tmp.width = W;
       tmp.height = H;
       const tc = tmp.getContext("2d")!;
 
       const cx = W / 2, cy = H / 2;
-      const layers = 7;
 
+      // Draw multiple receding layers — like looking down a tunnel
+      const layers = 12;
       for (let l = layers; l >= 0; l--) {
-        const depth = l / layers;
-        const scale = 0.5 + depth * 0.7;
-        const rot = time * (0.3 + l * 0.1) + l * 0.12;
-        const outerR = 180 * scale;
-        const innerR = 100 * scale;
-        const brightness = l === 0 ? 1 : 0.1 + (1 - depth) * 0.3;
+        const t = l / layers;
+        // Perspective: further layers are smaller and dimmer
+        const scale = 0.15 + t * 0.85;
+        const r = 190 * scale;
+        const rot = time + l * 0.1;
+        const brightness = l === 0 ? 1.0 : 0.05 + (1 - t) * 0.5;
+        const lw = l === 0 ? 3 : Math.max(1, 2.5 * (1 - t));
 
-        tc.fillStyle = `rgba(255,255,255,${brightness})`;
-        drawHexAperture(tc, cx, cy, outerR, innerR, rot);
+        tc.strokeStyle = `rgba(255,255,255,${brightness})`;
+        drawHexOutline(tc, cx, cy, r, rot, lw);
       }
 
-      // Apply ordered dithering
+      // Ordered dithering pass
       const imgData = tc.getImageData(0, 0, W, H);
       const d = imgData.data;
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
           const i = (y * W + x) * 4;
-          const avg = d[i]; // already greyscale
-          if (avg < 2) { d[i+3] = 0; continue; }
-
-          const threshold = (bayer8[y % 8][x % 8] / 64) * 255;
-          const on = avg > threshold;
-          d[i] = d[i+1] = d[i+2] = 255;
-          d[i+3] = on ? Math.min(255, avg + 60) : 0;
+          const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
+          if (avg < 3) { d[i + 3] = 0; continue; }
+          const threshold = (bayer[y % 8][x % 8] / 64) * 255;
+          const on = avg > threshold * 0.6;
+          d[i] = d[i + 1] = d[i + 2] = 255;
+          d[i + 3] = on ? Math.min(255, Math.round(avg * 1.5 + 30)) : 0;
         }
       }
       tc.putImageData(imgData, 0, 0);
 
-      // Draw to main canvas with glow
       ctx.drawImage(tmp, 0, 0);
 
-      // Glow pass
+      // Glow
       ctx.globalCompositeOperation = "screen";
-      ctx.filter = "blur(8px)";
-      ctx.globalAlpha = 0.2;
+      ctx.filter = "blur(6px)";
+      ctx.globalAlpha = 0.25;
       ctx.drawImage(tmp, 0, 0);
-      ctx.filter = "blur(20px)";
-      ctx.globalAlpha = 0.1;
+      ctx.filter = "blur(16px)";
+      ctx.globalAlpha = 0.12;
       ctx.drawImage(tmp, 0, 0);
       ctx.filter = "none";
       ctx.globalAlpha = 1;
