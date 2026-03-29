@@ -31,71 +31,70 @@ function DitheredLogo() {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, W, H);
 
-      // Bayer 4x4 dither matrix
-      const bayer = [
-        [0, 8, 2, 10],
-        [12, 4, 14, 6],
-        [3, 11, 1, 9],
-        [15, 7, 13, 5],
-      ];
+      // First extract just the logo shape (dark parts on white bg → invert)
+      const tmp = document.createElement("canvas");
+      tmp.width = W;
+      tmp.height = H;
+      const tmpCtx = tmp.getContext("2d")!;
+      tmpCtx.fillStyle = "#000";
+      tmpCtx.fillRect(0, 0, W, H);
+      tmpCtx.drawImage(img, 100, 100, W - 200, H - 200);
 
-      // Draw multiple receding layers for 3D tunnel effect
-      const layers = 8;
-      for (let layer = layers - 1; layer >= 0; layer--) {
-        const t = layer / layers;
-        const scale = 0.3 + t * 0.8;
-        const alpha = layer === 0 ? 1 : 0.15 + (1 - t) * 0.25;
-        const offset = layer * 3;
+      // Invert: the logo is dark on white, we want white on black
+      const imgData = tmpCtx.getImageData(0, 0, W, H);
+      const px = imgData.data;
+      for (let i = 0; i < px.length; i += 4) {
+        const avg = (px[i] + px[i + 1] + px[i + 2]) / 3;
+        // Logo parts are dark (<128), background is white (>128)
+        const isLogo = avg < 128;
+        px[i] = px[i + 1] = px[i + 2] = isLogo ? 255 : 0;
+        px[i + 3] = 255;
+      }
+      tmpCtx.putImageData(imgData, 0, 0);
 
-        // Draw logo at this scale
-        const logoSize = W * scale;
-        const x = (W - logoSize) / 2 + offset;
-        const y = (H - logoSize) / 2 + offset;
+      // Draw concentric layers with rotation and decreasing opacity
+      const layers = 6;
+      for (let i = layers; i >= 0; i--) {
+        const scale = 1 + i * 0.18;
+        const rotation = i * 0.08;
+        const opacity = i === 0 ? 0.9 : 0.08 + (layers - i) * 0.04;
 
-        // Temp canvas for this layer
-        const tmp = document.createElement("canvas");
-        tmp.width = W;
-        tmp.height = H;
-        const tmpCtx = tmp.getContext("2d")!;
-        tmpCtx.fillStyle = "#000";
-        tmpCtx.fillRect(0, 0, W, H);
-        tmpCtx.drawImage(img, x, y, logoSize, logoSize);
-
-        // Get pixels and apply ordered dithering
-        const imgData = tmpCtx.getImageData(0, 0, W, H);
-        const px = imgData.data;
-        for (let py = 0; py < H; py++) {
-          for (let px2 = 0; px2 < W; px2++) {
-            const i = (py * W + px2) * 4;
-            const avg = (px[i] + px[i + 1] + px[i + 2]) / 3;
-
-            // Ordered dither threshold
-            const threshold = ((bayer[py % 4][px2 % 4]) / 16) * 255;
-            const on = avg > threshold;
-
-            if (on) {
-              px[i] = 255;
-              px[i + 1] = 255;
-              px[i + 2] = 255;
-              px[i + 3] = Math.round(alpha * 255);
-            } else {
-              px[i + 3] = 0;
-            }
-          }
-        }
-        tmpCtx.putImageData(imgData, 0, 0);
-
-        // Composite onto main canvas
+        ctx.save();
+        ctx.globalAlpha = opacity;
         ctx.globalCompositeOperation = "screen";
+        ctx.translate(W / 2, H / 2);
+        ctx.rotate(rotation);
+        ctx.scale(scale, scale);
+        ctx.translate(-W / 2, -H / 2);
         ctx.drawImage(tmp, 0, 0);
+        ctx.restore();
       }
 
-      // Add soft glow
+      // Apply ordered dithering to the whole result
+      const bayer = [
+        [0, 8, 2, 10], [12, 4, 14, 6],
+        [3, 11, 1, 9], [15, 7, 13, 5],
+      ];
+      const finalData = ctx.getImageData(0, 0, W, H);
+      const fd = finalData.data;
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = (y * W + x) * 4;
+          const avg = (fd[i] + fd[i + 1] + fd[i + 2]) / 3;
+          const threshold = (bayer[y % 4][x % 4] / 16) * 255;
+          const on = avg > threshold * 0.8;
+          fd[i] = fd[i + 1] = fd[i + 2] = on ? 255 : 0;
+          fd[i + 3] = on ? Math.min(255, Math.round(avg * 2)) : 0;
+        }
+      }
+      ctx.putImageData(finalData, 0, 0);
+
+      // Glow
       ctx.globalCompositeOperation = "screen";
-      ctx.filter = "blur(15px)";
-      ctx.globalAlpha = 0.12;
+      ctx.filter = "blur(12px)";
+      ctx.globalAlpha = 0.15;
       ctx.drawImage(canvas, 0, 0);
-      ctx.filter = "blur(30px)";
+      ctx.filter = "blur(25px)";
       ctx.globalAlpha = 0.08;
       ctx.drawImage(canvas, 0, 0);
       ctx.filter = "none";
