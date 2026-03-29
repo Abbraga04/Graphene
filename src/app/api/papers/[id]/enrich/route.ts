@@ -118,6 +118,33 @@ export async function POST(
     }
   }
 
+  // Generate AI categories for ALL papers (replace arxiv codes with human labels)
+  if (abstract || title !== paper.title) {
+    try {
+      const catMsg = await client.messages.create({
+        model: "claude-opus-4-6",
+        max_tokens: 256,
+        messages: [
+          {
+            role: "user",
+            content: `Given this paper, return 2-4 short human-readable category labels. Use simple terms like "AI", "Neuroscience", "Robotics", "NLP", "Computer Vision", "Reinforcement Learning", "Frontend Engineering", "Systems", "Security", etc. Return ONLY a JSON array of strings.\n\nTitle: ${title}\nAbstract: ${abstract?.slice(0, 1000) || ""}`,
+          },
+        ],
+      });
+      const catText = catMsg.content[0].type === "text" ? catMsg.content[0].text : "[]";
+      const catMatch = catText.match(/\[[\s\S]*\]/);
+      if (catMatch) {
+        const aiCategories = JSON.parse(catMatch[0]);
+        if (Array.isArray(aiCategories) && aiCategories.length > 0) {
+          categories = aiCategories;
+          await supabase.from("papers").update({ categories }).eq("id", id);
+        }
+      }
+    } catch (e) {
+      console.error("Category generation failed:", e);
+    }
+  }
+
   // Stream the summary generation
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -128,8 +155,8 @@ export async function POST(
         );
       };
 
-      // Send metadata update if we extracted it
-      if (isWebPaper && title !== paper.title) {
+      // Send metadata update
+      if (title !== paper.title || categories !== paper.categories) {
         send("metadata", { title, authors, abstract, categories, published });
       }
 
