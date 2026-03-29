@@ -23,9 +23,9 @@ export async function fetchArxivPaper(arxivId: string): Promise<ArxivResult | nu
     .replace(/\.pdf$/, "")
     .replace(/v\d+$/, "")
     .trim();
-  // Retry up to 3 times with backoff (arxiv rate limits aggressively)
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
+  // Retry up to 4 times with increasing backoff (arxiv rate limits aggressively)
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 3000 * attempt));
     const url = `https://export.arxiv.org/api/query?id_list=${cleanId}`;
     const res = await fetch(url);
     const text = await res.text();

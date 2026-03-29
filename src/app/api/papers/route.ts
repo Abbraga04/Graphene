@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const isArxiv = url.includes("arxiv.org") || /^\d{4}\.\d{4,5}/.test(url);
+    const isArxiv = url.includes("arxiv.org") || /^\d{4}\.\d{4,6}/.test(url);
 
     if (isArxiv) {
       const paper = await fetchArxivPaper(url);

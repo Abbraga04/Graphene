@@ -83,7 +83,10 @@ export default function Home() {
         body: JSON.stringify({ url }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        console.error("Add paper failed:", data.error);
+        return;
+      }
 
       // Show the paper
       await fetchPapers();
