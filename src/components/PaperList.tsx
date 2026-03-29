@@ -5,7 +5,7 @@ import { Paper } from "@/lib/supabase";
 import { humanCategory } from "@/lib/categories";
 import { Check, Clock, ChevronRight, ChevronDown, ArrowUpDown } from "lucide-react";
 
-type SortOption = "newest" | "oldest" | "title" | "recently_read";
+type SortOption = "newest" | "oldest" | "published_new" | "published_old" | "title" | "recently_read";
 type ReadFilter = "all" | "read" | "unread";
 
 export default function PaperList({
@@ -56,6 +56,10 @@ export default function PaperList({
           return new Date(b.added_at).getTime() - new Date(a.added_at).getTime();
         case "oldest":
           return new Date(a.added_at).getTime() - new Date(b.added_at).getTime();
+        case "published_new":
+          return new Date(b.published || 0).getTime() - new Date(a.published || 0).getTime();
+        case "published_old":
+          return new Date(a.published || 0).getTime() - new Date(b.published || 0).getTime();
         case "title":
           return a.title.localeCompare(b.title);
         case "recently_read":
@@ -98,7 +102,7 @@ export default function PaperList({
         >
           <span className="flex items-center gap-1.5">
             <ArrowUpDown size={10} />
-            {sort === "newest" ? "Newest first" : sort === "oldest" ? "Oldest first" : sort === "title" ? "A-Z" : "Recently read"}
+            {{ newest: "Added: New", oldest: "Added: Old", published_new: "Published: New", published_old: "Published: Old", title: "A-Z", recently_read: "Last read" }[sort]}
             {selectedCategory && ` / ${humanCategory(selectedCategory)}`}
           </span>
           <ChevronDown size={10} className={`transition-transform ${showFilters ? "rotate-180" : ""}`} />
@@ -111,8 +115,10 @@ export default function PaperList({
               <p className="text-[9px] text-text-dim tracking-[0.2em] uppercase mb-1.5">Sort by</p>
               <div className="flex flex-wrap gap-1">
                 {([
-                  ["newest", "Newest"],
-                  ["oldest", "Oldest"],
+                  ["newest", "Added: New"],
+                  ["oldest", "Added: Old"],
+                  ["published_new", "Published: New"],
+                  ["published_old", "Published: Old"],
                   ["title", "A-Z"],
                   ["recently_read", "Last read"],
                 ] as [SortOption, string][]).map(([value, label]) => (

@@ -35,6 +35,14 @@ export default function PaperDetail({
   const [notes, setNotes] = useState(paper.notes || "");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Reset chat and notes when paper changes
+  useEffect(() => {
+    setMessages([]);
+    setNotes(paper.notes || "");
+    setQuestion("");
+    setTab("overview");
+  }, [paper.id]);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
