@@ -35,14 +35,18 @@ export async function GET(
             return NextResponse.json({ fallback: "pdf" });
           }
 
-          // Strip arxiv banner, header, footer
+          // Strip arxiv banner, header, footer, beta badge, report button
           html = html
             .replace(/<header[\s\S]*?<\/header>/gi, "")
             .replace(/<nav[\s\S]*?<\/nav>/gi, "")
             .replace(/<footer[\s\S]*?<\/footer>/gi, "")
             .replace(/<div[^>]*class="[^"]*ltx_page_header[^"]*"[\s\S]*?<\/div>/gi, "")
             .replace(/<div[^>]*class="[^"]*ltx_page_footer[^"]*"[\s\S]*?<\/div>/gi, "")
-            .replace(/<div[^>]*id="bib_section"[\s\S]*?<\/div>/gi, "");
+            .replace(/<div[^>]*class="[^"]*html-header-message[^"]*"[\s\S]*?<\/div>/gi, "")
+            .replace(/<div[^>]*class="[^"]*package-alerts[^"]*"[\s\S]*?<\/div>/gi, "")
+            .replace(/<a[^>]*class="[^"]*corner-ribbon[^"]*"[\s\S]*?<\/a>/gi, "")
+            .replace(/<button[^>]*[Rr]eport[\s\S]*?<\/button>/gi, "")
+            .replace(/<div[^>]*style="[^"]*position:\s*fixed[^"]*"[\s\S]*?<\/div>/gi, "");
 
           // Inject dark theme CSS
           const darkCss = `<style>
@@ -81,7 +85,16 @@ export async function GET(
             /* Hide any remaining arxiv chrome */
             .package-alerts, .html-header-message,
             [class*="banner"], [class*="alert"],
-            .arxiv-watermark, .ltx_page_logo {
+            .arxiv-watermark, .ltx_page_logo,
+            .beta-badge, [class*="beta"],
+            .report-issue, [class*="report-issue"],
+            .ltx_page_header, .ltx_page_footer,
+            #report-issue-button, .ar5iv-footer,
+            [id*="report"], [class*="Report"],
+            .feedbackOverlay, .feedback-button,
+            a[href*="report"], button[class*="report"],
+            .corner-ribbon, [class*="ribbon"],
+            [style*="position: fixed"] {
               display: none !important;
             }
             /* Clean up spacing */
