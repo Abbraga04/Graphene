@@ -45,3 +45,20 @@ export type ChatMessage = {
   content: string;
   created_at: string;
 };
+
+export type Profile = {
+  id: string;
+  username: string;
+  display_name: string | null;
+  bio: string;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PaperStar = {
+  id: string;
+  user_id: string;
+  paper_id: string;
+  created_at: string;
+};

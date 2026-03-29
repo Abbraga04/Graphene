@@ -401,7 +401,7 @@ function AppContent({ user, signOut, getToken }: { user: { id: string; email?: s
                 <PaperReader paper={selectedPaper} />
                 <button
                   onClick={() => setReaderCollapsed(true)}
-                  className="absolute top-3 right-3 p-1.5 bg-surface/80 backdrop-blur border border-border text-text-dim hover:text-text hover:border-border-hover transition-colors z-10"
+                  className="absolute top-3 right-3 p-1.5 bg-bg/90 backdrop-blur border border-border text-text hover:bg-surface-2 transition-colors z-10 shadow-md"
                   title="Hide reader"
                 >
                   <PanelLeftClose size={14} />

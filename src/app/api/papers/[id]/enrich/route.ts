@@ -321,7 +321,8 @@ export async function POST(
   "reproducibility": <0-100, 0 = code+data released, clear methodology, 100 = impossible to verify>,
   "verdict": "<one brutally honest sentence about the BS level>",
   "interesting": <0-100, COMPLETELY INDEPENDENT from BS score. Judge the IDEA and QUESTION being explored, NOT the execution or writing quality. A terribly written paper exploring a fascinating question = high interesting. A perfectly executed paper on a boring incremental benchmark = low interesting. Ask: Is the core question genuinely thought-provoking? Would you want to discuss this over coffee? Does it connect ideas from different fields in surprising ways? Does it challenge assumptions?>,
-  "interesting_why": "<one sentence on why the IDEA is or isn't compelling>"
+  "interesting_why": "<one sentence on why the IDEA is or isn't compelling>",
+  "legitness_why": "<one sentence explaining the legitness/credibility assessment>"
 }
 
 The overall BS score should be a WEIGHTED combination:

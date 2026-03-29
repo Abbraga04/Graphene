@@ -13,6 +13,9 @@ import {
   Loader2,
   MessageSquare,
   StickyNote,
+  Star,
+  Globe,
+  Lock,
 } from "lucide-react";
 
 export default function PaperDetail({
@@ -21,6 +24,7 @@ export default function PaperDetail({
   onClose,
   onToggleRead,
   onUpdateNotes,
+  onTogglePublic,
   getToken,
 }: {
   paper: Paper;
@@ -28,6 +32,7 @@ export default function PaperDetail({
   onClose: () => void;
   onToggleRead: () => void;
   onUpdateNotes: (notes: string) => void;
+  onTogglePublic?: () => void;
   getToken?: () => Promise<string | null>;
 }) {
   const [tab, setTab] = useState<"overview" | "chat" | "notes">("overview");
@@ -35,7 +40,46 @@ export default function PaperDetail({
   const [question, setQuestion] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [notes, setNotes] = useState(paper.notes || "");
+  const [starred, setStarred] = useState(false);
+  const [starCount, setStarCount] = useState(0);
+  const [starLoading, setStarLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch star status
+  useEffect(() => {
+    const fetchStars = async () => {
+      try {
+        const token = getToken ? await getToken() : null;
+        const res = await fetch(`/api/papers/${encodeURIComponent(paper.id)}/star`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await res.json();
+        setStarred(data.starred);
+        setStarCount(data.star_count);
+      } catch {}
+    };
+    fetchStars();
+  }, [paper.id, getToken]);
+
+  const handleToggleStar = async () => {
+    if (starLoading) return;
+    setStarLoading(true);
+    try {
+      const token = getToken ? await getToken() : null;
+      const res = await fetch(`/api/papers/${encodeURIComponent(paper.id)}/star`, {
+        method: starred ? "DELETE" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await res.json();
+      setStarred(data.starred);
+      setStarCount(data.star_count);
+    } catch {} finally {
+      setStarLoading(false);
+    }
+  };
 
   // Reset chat and notes when paper changes
   useEffect(() => {
@@ -137,6 +181,18 @@ export default function PaperDetail({
         {/* Actions */}
         <div className="flex items-center gap-2 mt-3">
           <button
+            onClick={handleToggleStar}
+            disabled={starLoading}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-wider uppercase border transition-colors ${
+              starred
+                ? "border-yellow-500/50 text-yellow-400"
+                : "border-border text-text hover:border-border-hover"
+            }`}
+          >
+            <Star size={10} fill={starred ? "currentColor" : "none"} />
+            {starCount > 0 ? starCount : "Star"}
+          </button>
+          <button
             onClick={onToggleRead}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-wider uppercase border transition-colors ${
               paper.is_read
@@ -147,6 +203,20 @@ export default function PaperDetail({
             {paper.is_read ? <Check size={10} /> : <BookOpen size={10} />}
             {paper.is_read ? "Read" : "Mark Read"}
           </button>
+          {onTogglePublic && (
+            <button
+              onClick={onTogglePublic}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-wider uppercase border transition-colors ${
+                (paper as any).is_public
+                  ? "border-accent text-accent"
+                  : "border-border text-text hover:border-border-hover"
+              }`}
+              title={(paper as any).is_public ? "Paper is public" : "Make paper public"}
+            >
+              {(paper as any).is_public ? <Globe size={10} /> : <Lock size={10} />}
+              {(paper as any).is_public ? "Public" : "Private"}
+            </button>
+          )}
           {paper.pdf_url && (
             <a
               href={paper.pdf_url}
@@ -233,7 +303,7 @@ export default function PaperDetail({
             {/* Interesting + BS Scores side by side */}
             {(paper as any).bs_score && (paper as any).bs_score.interesting != null && (
               <div className="flex gap-3">
-                <div className="flex-1 border border-border p-3 text-center">
+                <div className="flex-1 border border-border p-3 text-center flex flex-col justify-center">
                   <p className="text-[9px] text-text-dim tracking-[0.2em] uppercase mb-1">Interesting</p>
                   <p className="text-2xl font-bold" style={{
                     color: (paper as any).bs_score.interesting >= 80 ? "#8bf7c4"
@@ -247,7 +317,7 @@ export default function PaperDetail({
                     {(paper as any).bs_score.interesting_why}
                   </p>
                 </div>
-                <div className="flex-1 border border-border p-3 text-center">
+                <div className="flex-1 border border-border p-3 text-center flex flex-col justify-center">
                   <p className="text-[9px] text-text-dim tracking-[0.2em] uppercase mb-1">Legitness</p>
                   {(() => {
                     const legit = 100 - (paper as any).bs_score.overall;

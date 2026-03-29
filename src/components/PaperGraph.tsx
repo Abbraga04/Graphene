@@ -3,6 +3,14 @@
 import { useRef, useEffect, useState, useMemo, useCallback } from "react";
 import { Paper, PaperConnection } from "@/lib/supabase";
 
+let pretextModule: typeof import("@chenglou/pretext") | null = null;
+const loadPretext = async () => {
+  if (!pretextModule) {
+    pretextModule = await import("@chenglou/pretext");
+  }
+  return pretextModule;
+};
+
 const COLORS = [
   { fill: "rgba(99,130,255,0.08)", stroke: "rgba(99,130,255,0.25)", dot: "#6382ff" },
   { fill: "rgba(255,130,99,0.08)", stroke: "rgba(255,130,99,0.25)", dot: "#ff8263" },
@@ -232,20 +240,30 @@ export default function PaperGraph({
     };
   }, [findNode, onSelectPaper]);
 
+  // Set canvas size only when dims change
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = dims.w * dpr;
+    canvas.height = dims.h * dpr;
+    canvas.style.width = dims.w + "px";
+    canvas.style.height = dims.h + "px";
+    const ctx = canvas.getContext("2d")!;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }, [dims]);
+
   // Render loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
     let simSteps = 0;
+    const dpr = window.devicePixelRatio || 1;
 
     const render = () => {
       const W = dims.w, H = dims.h;
-      canvas.width = W * 2; // retina
-      canvas.height = H * 2;
-      canvas.style.width = W + "px";
-      canvas.style.height = H + "px";
-      ctx.scale(2, 2);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       // Physics
       if (!settledRef.current && simSteps < 200) {

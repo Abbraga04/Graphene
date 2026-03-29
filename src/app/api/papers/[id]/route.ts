@@ -48,6 +48,7 @@ export async function PATCH(
     if (body.is_read) updates.read_at = new Date().toISOString();
   }
   if (body.notes !== undefined) updates.notes = body.notes;
+  if (body.is_public !== undefined) updates.is_public = body.is_public;
 
   const { data, error } = await supabase
     .from("papers")
