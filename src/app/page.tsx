@@ -336,7 +336,8 @@ export default function Home() {
             <div className="w-full h-full flex items-center justify-center">
               <Loader2 size={24} className="animate-spin text-text-dim" />
             </div>
-          ) : view === "graph" && !selectedPaper ? (
+          ) : view === "graph" ? (
+            /* Graph always visible in graph mode */
             <PaperGraph
               papers={filteredPapers}
               connections={connections}
@@ -344,17 +345,15 @@ export default function Home() {
               selectedPaperId={selectedPaperId}
             />
           ) : selectedPaper ? (
+            /* Reader only in list mode */
             <PaperReader paper={selectedPaper} />
           ) : null}
 
           {/* Graph overlay: paper count chips */}
-          {view === "graph" && !selectedPaper && papers.length > 0 && (
+          {view === "graph" && papers.length > 0 && (
             <div className="absolute bottom-6 left-6 flex gap-3">
               <div className="bg-surface/80 backdrop-blur border border-border px-4 py-2 text-xs tracking-wider text-text-muted">
                 {papers.length} nodes / {connections.length} edges
-              </div>
-              <div className="bg-surface/80 backdrop-blur border border-border px-4 py-2 text-xs tracking-wider text-text-muted">
-                Scroll to zoom / Drag to rotate
               </div>
             </div>
           )}
