@@ -13,54 +13,56 @@
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-mono);
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #222;
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #444;
+  }
+
+  ::selection {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  input,
+  textarea {
+    font-family: var(--font-mono);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-text-dim);
+  }
 }
 
-body {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-mono);
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.2s ease-out;
+  }
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #222;
-  border-radius: 0;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #444;
-}
-
-/* Selection */
-::selection {
-  background: #ffffff;
-  color: #000000;
-}
-
-/* Input styling */
-input,
-textarea {
-  font-family: var(--font-mono);
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: var(--color-text-dim);
-}
-
-/* Custom animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -81,12 +83,4 @@ textarea::placeholder {
     opacity: 1;
     transform: translateX(0);
   }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
-}
-
-.animate-slide-in {
-  animation: slideIn 0.2s ease-out;
 }

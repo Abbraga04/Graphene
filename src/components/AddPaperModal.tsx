@@ -118,7 +118,7 @@ export default function AddPaperModal({
           {tab === "url" ? (
             <div>
               <label className="block text-xs text-text-muted mb-2 tracking-wider uppercase">
-                arXiv URL or Paper ID
+                Paper URL (arXiv, PDF, or any webpage)
               </label>
               <div className="flex gap-2">
                 <input
@@ -126,7 +126,7 @@ export default function AddPaperModal({
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSubmitUrl()}
-                  placeholder="https://arxiv.org/abs/2301.00001 or 2301.00001"
+                  placeholder="https://arxiv.org/abs/... or any PDF URL"
                   className="flex-1 bg-bg border border-border px-4 py-3 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-border-hover"
                 />
                 <button

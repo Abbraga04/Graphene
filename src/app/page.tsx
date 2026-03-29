@@ -12,6 +12,7 @@ import {
   Loader2,
   Search,
   Hexagon,
+  FileText,
 } from "lucide-react";
 
 const PaperGraph = lazy(() => import("@/components/PaperGraph"));
@@ -128,30 +129,30 @@ export default function Home() {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Top bar */}
-      <header className="h-12 border-b border-border flex items-center justify-between px-4 shrink-0 bg-surface">
-        <div className="flex items-center gap-3">
-          <Hexagon size={16} className="text-accent" strokeWidth={2} />
-          <span className="text-xs font-semibold tracking-[0.3em] uppercase text-accent">
+      <header className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-surface">
+        <div className="flex items-center gap-4">
+          <Hexagon size={20} className="text-accent" strokeWidth={2} />
+          <span className="text-sm font-semibold tracking-[0.3em] uppercase text-accent">
             Graphene
           </span>
-          <span className="text-[9px] text-text-dim tracking-wider ml-2 hidden sm:inline">
+          <span className="text-xs text-text-dim tracking-wider ml-2 hidden sm:inline">
             {stats.total} papers / {stats.read} read / {stats.connections} links
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {/* Local search */}
           <div className="relative hidden sm:block">
             <Search
-              size={12}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-dim"
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim"
             />
             <input
               type="text"
               value={searchLocal}
               onChange={(e) => setSearchLocal(e.target.value)}
               placeholder="Filter..."
-              className="bg-bg border border-border pl-7 pr-3 py-1.5 text-[10px] text-text w-40 focus:outline-none focus:border-border-hover focus:w-56 transition-all"
+              className="bg-bg border border-border pl-9 pr-4 py-2 text-xs text-text w-48 focus:outline-none focus:border-border-hover focus:w-64 transition-all"
             />
           </div>
 
@@ -159,39 +160,39 @@ export default function Home() {
           <div className="flex border border-border">
             <button
               onClick={() => setView("graph")}
-              className={`p-1.5 transition-colors ${
+              className={`p-2.5 transition-colors ${
                 view === "graph"
                   ? "bg-accent text-bg"
                   : "text-text-muted hover:text-text"
               }`}
               title="3D Graph"
             >
-              <LayoutGrid size={14} />
+              <LayoutGrid size={16} />
             </button>
             <button
               onClick={() => setView("list")}
-              className={`p-1.5 transition-colors ${
+              className={`p-2.5 transition-colors ${
                 view === "list"
                   ? "bg-accent text-bg"
                   : "text-text-muted hover:text-text"
               }`}
               title="List"
             >
-              <List size={14} />
+              <List size={16} />
             </button>
           </div>
 
           {/* Add button */}
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-bg text-[10px] font-medium tracking-wider uppercase hover:bg-text transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 bg-accent text-bg text-xs font-medium tracking-wider uppercase hover:bg-text transition-colors"
           >
             {adding ? (
-              <Loader2 size={12} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" />
             ) : (
-              <Plus size={12} />
+              <Plus size={14} />
             )}
-            Add
+            Add Paper
           </button>
         </div>
       </header>
@@ -217,7 +218,7 @@ export default function Home() {
             <div className="w-full h-full flex items-center justify-center">
               <Loader2 size={24} className="animate-spin text-text-dim" />
             </div>
-          ) : view === "graph" ? (
+          ) : view === "graph" && !selectedPaper ? (
             <Suspense
               fallback={
                 <div className="w-full h-full flex items-center justify-center">
@@ -232,15 +233,39 @@ export default function Home() {
                 selectedPaperId={selectedPaperId}
               />
             </Suspense>
+          ) : selectedPaper ? (
+            /* PDF / Paper Viewer */
+            <div className="w-full h-full flex flex-col">
+              {selectedPaper.pdf_url ? (
+                <iframe
+                  src={selectedPaper.pdf_url}
+                  className="w-full flex-1 border-none bg-white"
+                  title={selectedPaper.title}
+                />
+              ) : selectedPaper.source_url ? (
+                <iframe
+                  src={selectedPaper.source_url}
+                  className="w-full flex-1 border-none bg-white"
+                  title={selectedPaper.title}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-text-dim">
+                  <div className="text-center">
+                    <FileText size={32} className="mx-auto mb-3" />
+                    <p className="text-xs tracking-wider uppercase">No PDF available</p>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : null}
 
           {/* Graph overlay: paper count chips */}
-          {view === "graph" && papers.length > 0 && (
-            <div className="absolute bottom-4 left-4 flex gap-2">
-              <div className="bg-surface/80 backdrop-blur border border-border px-3 py-1.5 text-[9px] tracking-wider text-text-muted">
+          {view === "graph" && !selectedPaper && papers.length > 0 && (
+            <div className="absolute bottom-6 left-6 flex gap-3">
+              <div className="bg-surface/80 backdrop-blur border border-border px-4 py-2 text-xs tracking-wider text-text-muted">
                 {papers.length} nodes / {connections.length} edges
               </div>
-              <div className="bg-surface/80 backdrop-blur border border-border px-3 py-1.5 text-[9px] tracking-wider text-text-muted">
+              <div className="bg-surface/80 backdrop-blur border border-border px-4 py-2 text-xs tracking-wider text-text-muted">
                 Scroll to zoom / Drag to rotate
               </div>
             </div>
