@@ -56,17 +56,21 @@ export default function PaperGraph({
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
     const updateSize = () => {
-      if (containerRef.current) {
-        setDimensions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-        });
-      }
+      setDimensions({
+        width: el.clientWidth,
+        height: el.clientHeight,
+      });
     };
     updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
+
+    // ResizeObserver catches container resizes from panel drag, not just window
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   const graphData = useMemo(() => {
