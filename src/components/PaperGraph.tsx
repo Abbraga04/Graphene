@@ -1,9 +1,8 @@
 "use client";
 
-import { useRef, useMemo, useState, useEffect } from "react";
+import { useRef, useMemo, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Text } from "@react-three/drei";
-import * as THREE from "three";
+import { OrbitControls, Text, Line } from "@react-three/drei";
 import { Paper, PaperConnection } from "@/lib/supabase";
 
 type GraphNode = {
@@ -172,24 +171,13 @@ function ClusterCloud({ name, nodes }: { name: string; nodes: GraphNode[] }) {
 function EdgeLine({ from, to, strength }: {
   from: [number, number, number]; to: [number, number, number]; strength: number;
 }) {
-  const ref = useRef<THREE.Line>(null);
-
-  useEffect(() => {
-    if (!ref.current) return;
-    const geo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(...from),
-      new THREE.Vector3(...to),
-    ]);
-    ref.current.geometry = geo;
-  });
-
   return (
-    <primitive
-      ref={ref}
-      object={new THREE.Line(
-        new THREE.BufferGeometry(),
-        new THREE.LineBasicMaterial({ color: "#444444", transparent: true, opacity: strength * 0.7 })
-      )}
+    <Line
+      points={[from, to]}
+      color="#444444"
+      lineWidth={1}
+      transparent
+      opacity={strength * 0.7}
     />
   );
 }
