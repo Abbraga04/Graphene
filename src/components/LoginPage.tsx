@@ -12,102 +12,117 @@ function GithubIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-// Dithered logo canvas effect
+// Draw hexagon aperture shape procedurally
+function drawHexAperture(ctx: CanvasRenderingContext2D, cx: number, cy: number, outerR: number, innerR: number, rotation: number) {
+  const sides = 6;
+  for (let i = 0; i < sides; i++) {
+    const a1 = (Math.PI * 2 * i) / sides + rotation;
+    const a2 = (Math.PI * 2 * (i + 1)) / sides + rotation;
+    const gap = 0.04; // gap between blades
+
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a1 + gap) * outerR, cy + Math.sin(a1 + gap) * outerR);
+    ctx.lineTo(cx + Math.cos(a2 - gap) * outerR, cy + Math.sin(a2 - gap) * outerR);
+    ctx.lineTo(cx + Math.cos(a2 - gap * 2) * innerR, cy + Math.sin(a2 - gap * 2) * innerR);
+    ctx.lineTo(cx + Math.cos(a1 + gap * 2) * innerR, cy + Math.sin(a1 + gap * 2) * innerR);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
 function DitheredLogo() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animRef = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    const W = 600, H = 600;
+    const W = 500, H = 500;
     canvas.width = W;
     canvas.height = H;
 
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = "/graphene.png";
-    img.onload = () => {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, W, H);
+    const bayer8 = [
+      [0,32,8,40,2,34,10,42],
+      [48,16,56,24,50,18,58,26],
+      [12,44,4,36,14,46,6,38],
+      [60,28,52,20,62,30,54,22],
+      [3,35,11,43,1,33,9,41],
+      [51,19,59,27,49,17,57,25],
+      [15,47,7,39,13,45,5,37],
+      [63,31,55,23,61,29,53,21],
+    ];
 
-      // First extract just the logo shape (dark parts on white bg → invert)
+    let time = 0;
+
+    const render = () => {
+      time += 0.008;
+      ctx.clearRect(0, 0, W, H);
+
+      // Draw layers to offscreen canvas
       const tmp = document.createElement("canvas");
       tmp.width = W;
       tmp.height = H;
-      const tmpCtx = tmp.getContext("2d")!;
-      tmpCtx.fillStyle = "#000";
-      tmpCtx.fillRect(0, 0, W, H);
-      tmpCtx.drawImage(img, 100, 100, W - 200, H - 200);
+      const tc = tmp.getContext("2d")!;
 
-      // Invert: the logo is dark on white, we want white on black
-      const imgData = tmpCtx.getImageData(0, 0, W, H);
-      const px = imgData.data;
-      for (let i = 0; i < px.length; i += 4) {
-        const avg = (px[i] + px[i + 1] + px[i + 2]) / 3;
-        // Logo parts are dark (<128), background is white (>128)
-        const isLogo = avg < 128;
-        px[i] = px[i + 1] = px[i + 2] = isLogo ? 255 : 0;
-        px[i + 3] = 255;
-      }
-      tmpCtx.putImageData(imgData, 0, 0);
+      const cx = W / 2, cy = H / 2;
+      const layers = 7;
 
-      // Draw concentric layers with rotation and decreasing opacity
-      const layers = 6;
-      for (let i = layers; i >= 0; i--) {
-        const scale = 1 + i * 0.18;
-        const rotation = i * 0.08;
-        const opacity = i === 0 ? 0.9 : 0.08 + (layers - i) * 0.04;
+      for (let l = layers; l >= 0; l--) {
+        const depth = l / layers;
+        const scale = 0.5 + depth * 0.7;
+        const rot = time * (0.3 + l * 0.1) + l * 0.12;
+        const outerR = 180 * scale;
+        const innerR = 100 * scale;
+        const brightness = l === 0 ? 1 : 0.1 + (1 - depth) * 0.3;
 
-        ctx.save();
-        ctx.globalAlpha = opacity;
-        ctx.globalCompositeOperation = "screen";
-        ctx.translate(W / 2, H / 2);
-        ctx.rotate(rotation);
-        ctx.scale(scale, scale);
-        ctx.translate(-W / 2, -H / 2);
-        ctx.drawImage(tmp, 0, 0);
-        ctx.restore();
+        tc.fillStyle = `rgba(255,255,255,${brightness})`;
+        drawHexAperture(tc, cx, cy, outerR, innerR, rot);
       }
 
-      // Apply ordered dithering to the whole result
-      const bayer = [
-        [0, 8, 2, 10], [12, 4, 14, 6],
-        [3, 11, 1, 9], [15, 7, 13, 5],
-      ];
-      const finalData = ctx.getImageData(0, 0, W, H);
-      const fd = finalData.data;
+      // Apply ordered dithering
+      const imgData = tc.getImageData(0, 0, W, H);
+      const d = imgData.data;
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
           const i = (y * W + x) * 4;
-          const avg = (fd[i] + fd[i + 1] + fd[i + 2]) / 3;
-          const threshold = (bayer[y % 4][x % 4] / 16) * 255;
-          const on = avg > threshold * 0.8;
-          fd[i] = fd[i + 1] = fd[i + 2] = on ? 255 : 0;
-          fd[i + 3] = on ? Math.min(255, Math.round(avg * 2)) : 0;
+          const avg = d[i]; // already greyscale
+          if (avg < 2) { d[i+3] = 0; continue; }
+
+          const threshold = (bayer8[y % 8][x % 8] / 64) * 255;
+          const on = avg > threshold;
+          d[i] = d[i+1] = d[i+2] = 255;
+          d[i+3] = on ? Math.min(255, avg + 60) : 0;
         }
       }
-      ctx.putImageData(finalData, 0, 0);
+      tc.putImageData(imgData, 0, 0);
 
-      // Glow
+      // Draw to main canvas with glow
+      ctx.drawImage(tmp, 0, 0);
+
+      // Glow pass
       ctx.globalCompositeOperation = "screen";
-      ctx.filter = "blur(12px)";
-      ctx.globalAlpha = 0.15;
-      ctx.drawImage(canvas, 0, 0);
-      ctx.filter = "blur(25px)";
-      ctx.globalAlpha = 0.08;
-      ctx.drawImage(canvas, 0, 0);
+      ctx.filter = "blur(8px)";
+      ctx.globalAlpha = 0.2;
+      ctx.drawImage(tmp, 0, 0);
+      ctx.filter = "blur(20px)";
+      ctx.globalAlpha = 0.1;
+      ctx.drawImage(tmp, 0, 0);
       ctx.filter = "none";
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
+
+      animRef.current = requestAnimationFrame(render);
     };
+
+    render();
+    return () => cancelAnimationFrame(animRef.current);
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
       className="w-full h-full"
-      style={{ imageRendering: "auto" }}
     />
   );
 }
@@ -243,11 +258,11 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Big background text — clips at bottom only */}
-        <div className="w-full mt-8 overflow-hidden h-[120px]">
+        {/* Big background text — shows top, clips bottom */}
+        <div className="w-full mt-12 overflow-hidden" style={{ height: "clamp(60px, 8vw, 110px)" }}>
           <p
-            className="font-bold leading-none select-none text-white/[0.04] text-center w-full"
-            style={{ fontSize: "clamp(120px, 15vw, 220px)", letterSpacing: "-0.02em" }}
+            className="font-bold leading-[0.85] select-none text-white/[0.05] text-center w-full"
+            style={{ fontSize: "clamp(80px, 10vw, 160px)", letterSpacing: "-0.02em" }}
           >
             Graphene
           </p>
