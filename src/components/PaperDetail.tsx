@@ -212,9 +212,19 @@ export default function PaperDetail({
                 <h3 className="text-[10px] text-text-dim tracking-[0.2em] uppercase mb-2">
                   AI Summary
                 </h3>
-                <div className="text-xs text-text-muted leading-relaxed border-l-2 border-border pl-3 whitespace-pre-wrap">
-                  {paper.summary}
-                </div>
+                <div
+                  className="text-xs text-text-muted leading-relaxed border-l-2 border-border pl-3 summary-content"
+                  dangerouslySetInnerHTML={{
+                    __html: paper.summary
+                      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-text">$1</strong>')
+                      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+                      .replace(/^[•\-]\s*/gm, "")
+                      .split("\n")
+                      .filter((l) => l.trim())
+                      .map((l) => `<p style="margin-bottom: 8px">${l.trim()}</p>`)
+                      .join(""),
+                  }}
+                />
               </div>
             )}
 
