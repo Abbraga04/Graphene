@@ -98,7 +98,7 @@ export default function PaperDetail({
             <h2 className="text-sm font-medium text-accent leading-tight">
               {paper.title}
             </h2>
-            <p className="text-[10px] text-text-muted mt-1">
+            <p className="text-[10px] text-text mt-1">
               {(paper.authors as string[])?.join(", ")}
             </p>
           </div>
@@ -117,7 +117,7 @@ export default function PaperDetail({
             className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-wider uppercase border transition-colors ${
               paper.is_read
                 ? "border-accent text-accent"
-                : "border-border text-text-muted hover:border-border-hover"
+                : "border-border text-text hover:border-border-hover"
             }`}
           >
             {paper.is_read ? <Check size={10} /> : <BookOpen size={10} />}
@@ -128,7 +128,7 @@ export default function PaperDetail({
               href={paper.pdf_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-wider uppercase border border-border text-text-muted hover:border-border-hover transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-wider uppercase border border-border text-text hover:border-border-hover transition-colors"
             >
               <FileText size={10} />
               PDF
@@ -139,7 +139,7 @@ export default function PaperDetail({
               href={paper.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-wider uppercase border border-border text-text-muted hover:border-border-hover transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-wider uppercase border border-border text-text hover:border-border-hover transition-colors"
             >
               <ExternalLink size={10} />
               Source
@@ -156,7 +156,7 @@ export default function PaperDetail({
               className={`flex items-center gap-1.5 px-4 py-2.5 text-[10px] tracking-[0.2em] uppercase transition-colors ${
                 tab === t
                   ? "text-accent border-b border-accent"
-                  : "text-text-muted hover:text-text"
+                  : "text-text hover:text-text"
               }`}
             >
               {t === "chat" && <MessageSquare size={10} />}
@@ -181,7 +181,7 @@ export default function PaperDetail({
                   {(paper.categories as string[]).map((cat) => (
                     <span
                       key={cat}
-                      className="text-[10px] border border-border px-2 py-1 text-text-muted"
+                      className="text-[10px] border border-border px-2 py-1 text-text"
                     >
                       {cat}
                     </span>
@@ -196,7 +196,7 @@ export default function PaperDetail({
                 <h3 className="text-[10px] text-text-dim tracking-[0.2em] uppercase mb-1">
                   Published
                 </h3>
-                <p className="text-xs text-text-muted">
+                <p className="text-xs text-text">
                   {new Date(paper.published).toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "long",
@@ -213,7 +213,7 @@ export default function PaperDetail({
               </h3>
               {paper.summary ? (
                 <div
-                  className="text-xs text-text-muted leading-relaxed border-l-2 border-border pl-3 summary-content"
+                  className="text-xs text-text leading-relaxed border-l-2 border-border pl-3 summary-content"
                   dangerouslySetInnerHTML={{
                     __html: paper.summary
                       .replace(/\*\*(.*?)\*\*/g, '<strong class="text-text">$1</strong>')
@@ -239,7 +239,7 @@ export default function PaperDetail({
                 <h3 className="text-[10px] text-text-dim tracking-[0.2em] uppercase mb-2">
                   Abstract
                 </h3>
-                <p className="text-xs text-text-muted leading-relaxed">
+                <p className="text-xs text-text leading-relaxed">
                   {paper.abstract}
                 </p>
               </div>
@@ -264,7 +264,7 @@ export default function PaperDetail({
                   className={`text-xs leading-relaxed ${
                     msg.role === "user"
                       ? "text-accent pl-4 border-l border-accent"
-                      : "text-text-muted pl-4 border-l border-border"
+                      : "text-text pl-4 border-l border-border"
                   }`}
                 >
                   <span className="text-[9px] text-text-dim tracking-[0.2em] uppercase block mb-1">
