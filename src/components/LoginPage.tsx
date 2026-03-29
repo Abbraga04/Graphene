@@ -14,64 +14,166 @@ function GithubIcon({ size = 16 }: { size?: number }) {
 }
 
 function DitheredLogo() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animRef = useRef<number>(0);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    const W = 500, H = 500;
+    canvas.width = W;
+    canvas.height = H;
+
+    const bayer = [
+      [0,32,8,40,2,34,10,42],[48,16,56,24,50,18,58,26],
+      [12,44,4,36,14,46,6,38],[60,28,52,20,62,30,54,22],
+      [3,35,11,43,1,33,9,41],[51,19,59,27,49,17,57,25],
+      [15,47,7,39,13,45,5,37],[63,31,55,23,61,29,53,21],
+    ];
+
+    // Build the logo geometry: 6 blades, each a quad (4 vertices)
+    // Outer hex vertices and inner hex vertices (offset by 1)
+    const R = 140, r = 60, depth = 30;
+    const N = 6;
+
+    function hexPt(radius: number, i: number, z: number): [number, number, number] {
+      const a = (Math.PI * 2 * i) / N - Math.PI / 2;
+      return [Math.cos(a) * radius, Math.sin(a) * radius, z];
+    }
+
+    // Each blade: outer[i] → outer[i+1] → inner[i+2] → inner[i+1]
+    // Front and back faces + 4 side faces per blade
+    type Face = { verts: [number, number, number][]; brightness: number };
+
+    function buildFaces(zFront: number, zBack: number): Face[] {
+      const faces: Face[] = [];
+      for (let i = 0; i < N; i++) {
+        const i1 = (i + 1) % N;
+        const i2 = (i + 2) % N;
+
+        const of0 = hexPt(R, i, zFront);
+        const of1 = hexPt(R, i1, zFront);
+        const if1 = hexPt(r, i1, zFront);
+        const if2 = hexPt(r, i2, zFront);
+
+        const ob0 = hexPt(R, i, zBack);
+        const ob1 = hexPt(R, i1, zBack);
+        const ib1 = hexPt(r, i1, zBack);
+        const ib2 = hexPt(r, i2, zBack);
+
+        // Front face
+        faces.push({ verts: [of0, of1, if2, if1], brightness: 1.0 });
+        // Back face
+        faces.push({ verts: [ob1, ob0, ib1, ib2], brightness: 0.3 });
+        // Side: outer edge
+        faces.push({ verts: [of0, of1, ob1, ob0], brightness: 0.5 });
+        // Side: inner edge
+        faces.push({ verts: [if1, if2, ib2, ib1], brightness: 0.4 });
+        // Side: left
+        faces.push({ verts: [of0, if1, ib1, ob0], brightness: 0.6 });
+        // Side: right
+        faces.push({ verts: [of1, if2, ib2, ob1], brightness: 0.55 });
+      }
+      return faces;
+    }
+
+    const allFaces = buildFaces(-depth / 2, depth / 2);
+
+    function rotY(p: [number, number, number], a: number): [number, number, number] {
+      return [p[0] * Math.cos(a) + p[2] * Math.sin(a), p[1], -p[0] * Math.sin(a) + p[2] * Math.cos(a)];
+    }
+    function rotX(p: [number, number, number], a: number): [number, number, number] {
+      return [p[0], p[1] * Math.cos(a) - p[2] * Math.sin(a), p[1] * Math.sin(a) + p[2] * Math.cos(a)];
+    }
+    function project(p: [number, number, number]): [number, number] {
+      const fov = 500;
+      const s = fov / (fov + p[2] + 250);
+      return [p[0] * s + W / 2, p[1] * s + H / 2];
+    }
+
     let time = 0;
-    const animate = () => {
-      time += 0.005;
-      const rotY = time * 40;
-      const rotX = Math.sin(time * 0.8) * 15;
-      el.style.transform = `perspective(800px) rotateY(${rotY}deg) rotateX(${rotX}deg)`;
-      requestAnimationFrame(animate);
+
+    const render = () => {
+      time += 0.008;
+      const ry = time;
+      const rx = Math.sin(time * 0.6) * 0.35;
+
+      const tmp = document.createElement("canvas");
+      tmp.width = W; tmp.height = H;
+      const tc = tmp.getContext("2d")!;
+
+      // Sort faces by average z depth (painter's algorithm)
+      const transformed = allFaces.map((face) => {
+        const xVerts = face.verts.map((v) => {
+          let p = rotX(v, rx);
+          p = rotY(p, ry);
+          return p;
+        });
+        const avgZ = xVerts.reduce((s, v) => s + v[2], 0) / xVerts.length;
+        const projected = xVerts.map(project);
+
+        // Simple backface culling via cross product
+        const [a, b, c] = projected;
+        const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+
+        return { projected, avgZ, brightness: face.brightness, visible: cross > 0 };
+      });
+
+      transformed.sort((a, b) => b.avgZ - a.avgZ);
+
+      for (const face of transformed) {
+        if (!face.visible) continue;
+        const b = Math.floor(face.brightness * 200);
+        tc.fillStyle = `rgb(${b},${b},${b})`;
+        tc.strokeStyle = `rgb(${Math.min(255, b + 40)},${Math.min(255, b + 40)},${Math.min(255, b + 40)})`;
+        tc.lineWidth = 1;
+        tc.beginPath();
+        face.projected.forEach(([x, y], i) => i === 0 ? tc.moveTo(x, y) : tc.lineTo(x, y));
+        tc.closePath();
+        tc.fill();
+        tc.stroke();
+      }
+
+      // Dithering pass
+      const imgData = tc.getImageData(0, 0, W, H);
+      const d = imgData.data;
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = (y * W + x) * 4;
+          const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
+          if (avg < 3) { d[i + 3] = 0; continue; }
+          const threshold = (bayer[y % 8][x % 8] / 64) * 255;
+          const on = avg > threshold * 0.7;
+          d[i] = d[i + 1] = d[i + 2] = 255;
+          d[i + 3] = on ? Math.min(255, Math.round(avg * 1.8)) : 0;
+        }
+      }
+      tc.putImageData(imgData, 0, 0);
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(tmp, 0, 0);
+
+      // Glow
+      ctx.globalCompositeOperation = "screen";
+      ctx.filter = "blur(4px)";
+      ctx.globalAlpha = 0.25;
+      ctx.drawImage(tmp, 0, 0);
+      ctx.filter = "blur(12px)";
+      ctx.globalAlpha = 0.1;
+      ctx.drawImage(tmp, 0, 0);
+      ctx.filter = "none";
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+
+      animRef.current = requestAnimationFrame(render);
     };
-    animate();
+
+    render();
+    return () => cancelAnimationFrame(animRef.current);
   }, []);
 
-  // Multiple stacked layers to create 3D depth/extrusion effect
-  const layers = 12;
-
-  return (
-    <div className="w-[400px] h-[400px] flex items-center justify-center" style={{ perspective: "800px" }}>
-      <div ref={containerRef} className="relative w-[280px] h-[280px]" style={{ transformStyle: "preserve-3d" }}>
-        {Array.from({ length: layers }).map((_, i) => {
-          const z = (i - layers / 2) * 3;
-          const isFront = i === 0;
-          const isBack = i === layers - 1;
-          const opacity = isFront || isBack ? 0.9 : 0.08 + (1 - Math.abs(i - layers / 2) / (layers / 2)) * 0.15;
-
-          return (
-            <img
-              key={i}
-              src="/graphene.png"
-              alt=""
-              className="absolute inset-0 w-full h-full"
-              style={{
-                transform: `translateZ(${z}px)`,
-                filter: `invert(1) brightness(${isFront ? 1.2 : 0.6}) contrast(${isFront ? 1.5 : 2.5}) grayscale(1)`,
-                opacity,
-                mixBlendMode: "screen",
-                imageRendering: "pixelated",
-              }}
-            />
-          );
-        })}
-
-        {/* Dot/dither overlay */}
-        <div
-          className="absolute inset-0 w-full h-full pointer-events-none"
-          style={{
-            transform: `translateZ(${(layers / 2) * 3 + 2}px)`,
-            backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.3) 1px, transparent 1px)`,
-            backgroundSize: "4px 4px",
-            mixBlendMode: "multiply",
-          }}
-        />
-      </div>
-    </div>
-  );
+  return <canvas ref={canvasRef} className="w-full h-full" />;
 }
 
 export default function LoginPage() {
