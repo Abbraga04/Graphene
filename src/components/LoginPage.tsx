@@ -27,7 +27,11 @@ function AsciiLogo() {
       tmp.width = SAMPLE;
       tmp.height = SAMPLE;
       const tc = tmp.getContext("2d")!;
-      tc.drawImage(img, 0, 0, SAMPLE, SAMPLE);
+      // Draw with inset to skip the border/edge pixels
+      const inset = 10;
+      tc.fillStyle = "#fff";
+      tc.fillRect(0, 0, SAMPLE, SAMPLE);
+      tc.drawImage(img, inset, inset, SAMPLE - inset * 2, SAMPLE - inset * 2);
       logoPixels = tc.getImageData(0, 0, SAMPLE, SAMPLE).data;
     };
 
@@ -69,7 +73,7 @@ function AsciiLogo() {
           // Logo is dark on white — invert: dark pixels = logo shape
           const logoVal = 1 - brightness / 255;
 
-          if (logoVal < 0.1) continue; // skip background
+          if (logoVal < 0.15) continue; // skip background and faint edges
 
           // Animated shimmer
           const shimmer = Math.sin(time * 2 + charOffsets[row * cols + col]) * 0.15;
