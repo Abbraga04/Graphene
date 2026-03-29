@@ -15,6 +15,8 @@ import {
   FileText,
 } from "lucide-react";
 
+import PaperReader from "@/components/PaperReader";
+
 const PaperGraph = lazy(() => import("@/components/PaperGraph"));
 
 export default function Home() {
@@ -234,29 +236,7 @@ export default function Home() {
               />
             </Suspense>
           ) : selectedPaper ? (
-            /* PDF / Paper Viewer */
-            <div className="w-full h-full flex flex-col">
-              {selectedPaper.pdf_url ? (
-                <iframe
-                  src={selectedPaper.pdf_url}
-                  className="w-full flex-1 border-none bg-white"
-                  title={selectedPaper.title}
-                />
-              ) : selectedPaper.source_url ? (
-                <iframe
-                  src={selectedPaper.source_url}
-                  className="w-full flex-1 border-none bg-white"
-                  title={selectedPaper.title}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-text-dim">
-                  <div className="text-center">
-                    <FileText size={32} className="mx-auto mb-3" />
-                    <p className="text-xs tracking-wider uppercase">No PDF available</p>
-                  </div>
-                </div>
-              )}
-            </div>
+            <PaperReader paper={selectedPaper} />
           ) : null}
 
           {/* Graph overlay: paper count chips */}
