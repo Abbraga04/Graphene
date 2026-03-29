@@ -3,15 +3,19 @@ import { supabase } from "@/lib/supabase";
 import { fetchArxivPaper } from "@/lib/arxiv";
 
 // GET all papers
-export async function GET() {
-  const { data: papers, error } = await supabase
-    .from("papers")
-    .select("*")
-    .order("added_at", { ascending: false });
+export async function GET(req: NextRequest) {
+  const userId = req.nextUrl.searchParams.get("user_id");
 
+  let query = supabase.from("papers").select("*").order("added_at", { ascending: false });
+  if (userId) query = query.eq("user_id", userId);
+
+  const { data: papers, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const { data: connections } = await supabase.from("paper_connections").select("*");
+  const paperIds = (papers || []).map((p) => p.id);
+  const { data: connections } = paperIds.length > 0
+    ? await supabase.from("paper_connections").select("*").or(`paper_a.in.(${paperIds.join(",")}),paper_b.in.(${paperIds.join(",")})`)
+    : { data: [] };
 
   return NextResponse.json({ papers: papers || [], connections: connections || [] });
 }
@@ -19,7 +23,7 @@ export async function GET() {
 // POST - add a new paper (fast insert, no AI blocking)
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { url } = body;
+  const { url, user_id } = body;
 
   if (!url) {
     return NextResponse.json({ error: "URL required" }, { status: 400 });
@@ -57,6 +61,7 @@ export async function POST(req: NextRequest) {
           source_url: paper.sourceUrl,
           pdf_url: paper.pdfUrl,
           categories: paper.categories,
+          user_id: user_id || null,
         })
         .select()
         .single();
@@ -111,6 +116,7 @@ export async function POST(req: NextRequest) {
         source_url: url,
         pdf_url: storedPdfUrl,
         categories: [],
+        user_id: user_id || null,
       })
       .select()
       .single();

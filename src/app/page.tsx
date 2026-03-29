@@ -19,10 +19,30 @@ import {
 
 import PaperReader from "@/components/PaperReader";
 import ResizeHandle from "@/components/ResizeHandle";
-
 import PaperGraph from "@/components/PaperGraph";
+import LoginPage from "@/components/LoginPage";
+import { useAuth } from "@/components/AuthProvider";
+import { LogOut } from "lucide-react";
 
 export default function Home() {
+  const { user, loading: authLoading, signOut } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-bg">
+        <Loader2 size={24} className="animate-spin text-text-dim" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  return <AppContent user={user} signOut={signOut} />;
+}
+
+function AppContent({ user, signOut }: { user: { id: string; email?: string }; signOut: () => void }) {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [connections, setConnections] = useState<PaperConnection[]>([]);
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
@@ -43,7 +63,7 @@ export default function Home() {
   // Fetch all papers
   const fetchPapers = useCallback(async () => {
     try {
-      const res = await fetch("/api/papers");
+      const res = await fetch(`/api/papers?user_id=${user.id}`);
       const data = await res.json();
       setPapers(data.papers || []);
       setConnections(data.connections || []);
@@ -52,7 +72,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user.id]);
 
   useEffect(() => {
     fetchPapers();
@@ -82,7 +102,7 @@ export default function Home() {
       const res = await fetch("/api/papers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, user_id: user.id }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -295,6 +315,13 @@ export default function Home() {
               <Plus size={14} />
             )}
             Add Paper
+          </button>
+          <button
+            onClick={signOut}
+            className="p-2.5 text-text-dim hover:text-text transition-colors"
+            title="Sign out"
+          >
+            <LogOut size={14} />
           </button>
         </div>
       </header>

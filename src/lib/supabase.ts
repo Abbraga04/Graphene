@@ -1,9 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Server-side client (bypasses RLS) — for API routes
+export const supabase = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey);
+
+// Client-side client (respects RLS) — for browser auth
+export function createBrowserClient() {
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
 
 export type Paper = {
   id: string;
@@ -20,6 +27,7 @@ export type Paper = {
   read_at: string | null;
   is_read: boolean;
   notes: string;
+  user_id?: string;
 };
 
 export type PaperConnection = {
