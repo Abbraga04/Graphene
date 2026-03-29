@@ -225,8 +225,8 @@ export default function Home() {
             onClick={() => setView(view === "graph" ? "list" : "graph")}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            <img src="/graphene.png" alt="Graphene" className="w-5 h-5 invert" />
-            <span className="text-sm font-semibold tracking-[0.3em] uppercase text-accent">
+            <img src="/graphene.png" alt="Graphene" className="w-7 h-7 invert" />
+            <span className="text-base font-bold tracking-[0.05em] text-accent" style={{ fontFamily: "'Libre Baskerville', serif" }}>
               Graphene
             </span>
           </button>
