@@ -115,8 +115,11 @@ export default function PaperGraph({
   }, [graphData]);
 
   const handleNodeClick = useCallback(
-    (node: any) => {
-      if (node.id) onSelectPaper(String(node.id));
+    (node: any, event: MouseEvent) => {
+      event.stopPropagation();
+      if (node.id) {
+        onSelectPaper(String(node.id));
+      }
     },
     [onSelectPaper]
   );
@@ -228,11 +231,17 @@ export default function PaperGraph({
         nodeCanvasObject={paintNode}
         nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D) => {
           ctx.beginPath();
-          ctx.arc(node.x, node.y, 10, 0, 2 * Math.PI);
+          ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
           ctx.fillStyle = color;
           ctx.fill();
         }}
         onNodeClick={handleNodeClick}
+        onNodeHover={(node: any) => {
+          if (containerRef.current) {
+            containerRef.current.style.cursor = node ? "pointer" : "default";
+          }
+        }}
+        enableNodeDrag={false}
         onRenderFramePre={paintBefore}
         linkColor={() => "rgba(255,255,255,0.08)"}
         linkWidth={1}
