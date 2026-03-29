@@ -56,7 +56,7 @@ export async function POST() {
 }
 
 Weighted BS: overclaiming 30%, rigor 25%, novelty 20%, credibility 15%, reproducibility 10%.
-"Attention Is All You Need" = ~5 BS, ~95 interesting. fMRI for AI temporal reasoning = ~60 BS but ~80 interesting.
+Judge each paper purely on its own merits.
 
 Authors: ${(paper.authors as string[])?.join(", ") || "unknown"}
 Title: ${paper.title}
