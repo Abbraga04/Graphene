@@ -5,7 +5,7 @@
 <h1 align="center">Graphene</h1>
 
 <p align="center">
-  A modern paper reader with AI-powered analysis, a knowledge graph, and a bullshit detector.
+  A modern paper reader with AI-powered analysis, a knowledge graph, and a BS detector.
 </p>
 
 <p align="center">
