@@ -46,7 +46,7 @@ export default function PaperReader({ paper }: { paper: Paper }) {
   return (
     <div className="w-full h-full">
       <iframe
-        src={viewUrl}
+        src={`${viewUrl}#toolbar=0&navpanes=0&view=FitH`}
         className="w-full h-full border-none"
         title={paper.title}
       />
