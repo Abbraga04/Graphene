@@ -1,7 +1,8 @@
 "use client";
 
 import { useAuth } from "./AuthProvider";
-import { Shield, Zap, Brain, Map } from "lucide-react";
+import { ArrowRight, Shield, Zap, Brain, Map } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 function GithubIcon({ size = 16 }: { size?: number }) {
   return (
@@ -11,18 +12,86 @@ function GithubIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+// Dithered logo canvas effect
+function DitheredLogo() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    const size = 500;
+    canvas.width = size;
+    canvas.height = size;
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = "/graphene.png";
+    img.onload = () => {
+      // Draw logo
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, size, size);
+      ctx.drawImage(img, 50, 50, size - 100, size - 100);
+
+      // Get pixel data
+      const imageData = ctx.getImageData(0, 0, size, size);
+      const data = imageData.data;
+
+      // Dither effect (Floyd-Steinberg-ish)
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const i = (y * size + x) * 4;
+          const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+
+          // Add noise for dither
+          const noise = (Math.random() - 0.5) * 80;
+          const val = avg + noise;
+          const newVal = val > 128 ? 255 : 0;
+
+          data[i] = newVal;
+          data[i + 1] = newVal;
+          data[i + 2] = newVal;
+          data[i + 3] = Math.min(data[i + 3], newVal === 255 ? 200 : 30);
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      // Add glow layers
+      ctx.globalCompositeOperation = "screen";
+      ctx.filter = "blur(20px)";
+      ctx.globalAlpha = 0.15;
+      ctx.drawImage(canvas, 0, 0);
+      ctx.filter = "blur(40px)";
+      ctx.globalAlpha = 0.1;
+      ctx.drawImage(canvas, 0, 0);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+      ctx.filter = "none";
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="w-full h-full"
+      style={{ imageRendering: "auto" }}
+    />
+  );
+}
+
 export default function LoginPage() {
   const { signInWithGithub, signInWithGoogle } = useAuth();
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-5 border-b border-border">
+      <nav className="flex items-center justify-between px-8 py-4">
         <div className="flex items-center gap-2">
-          <img src="/graphene.png" alt="Graphene" className="w-6 h-6 invert" />
-          <span className="text-sm font-bold tracking-[0.2em] uppercase text-accent">Graphene</span>
+          <img src="/graphene.png" alt="Graphene" className="w-5 h-5 invert" />
+          <span className="text-sm font-bold tracking-[0.15em] uppercase text-accent">Graphene</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <iframe
             src="https://ghbtns.com/github-btn.html?user=lance116&repo=Graphene&type=star&count=true&size=large"
             frameBorder="0"
@@ -34,56 +103,79 @@ export default function LoginPage() {
           />
           <button
             onClick={signInWithGithub}
-            className="text-xs px-4 py-2 bg-accent text-bg font-medium tracking-wider uppercase hover:bg-text transition-colors"
+            className="flex items-center gap-2 text-xs px-4 py-2 text-text-dim hover:text-text transition-colors tracking-wider"
           >
-            Sign In
+            Log in <GithubIcon size={14} />
+          </button>
+          <button
+            onClick={signInWithGithub}
+            className="flex items-center gap-2 text-xs px-5 py-2 bg-accent text-bg font-medium tracking-wider hover:bg-text transition-colors"
+          >
+            Sign up <ArrowRight size={12} />
           </button>
         </div>
       </nav>
 
-      {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center px-8 py-24">
-        <div className="max-w-2xl text-center">
-          <img src="/graphene.png" alt="" className="w-20 h-20 invert mx-auto mb-8" />
-          <h1 className="text-4xl font-bold tracking-tight text-accent leading-tight mb-4">
-            Your research papers,<br />mapped and understood.
-          </h1>
-          <p className="text-sm text-text-dim leading-relaxed max-w-lg mx-auto mb-10">
-            Collect, read, and track academic papers in one place. AI-powered summaries,
-            a knowledge graph that connects your reading, and a built-in BS detector.
-          </p>
+      {/* Hero — split layout */}
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-8 pt-20 pb-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[500px]">
+            {/* Left — text */}
+            <div>
+              <h1 className="text-5xl font-bold text-accent leading-[1.1] tracking-tight mb-6">
+                Your research papers,<br />
+                mapped and understood.
+              </h1>
+              <p className="text-base text-text-dim leading-relaxed mb-8 max-w-md">
+                Collect and track academic papers in one place.
+                AI-powered summaries, a knowledge graph that
+                connects your reading, and a built-in BS detector.
+              </p>
 
-          <div className="flex items-center justify-center gap-4">
-            <button
-              onClick={signInWithGithub}
-              className="flex items-center gap-3 px-6 py-3 bg-accent text-bg text-xs font-medium tracking-wider uppercase hover:bg-text transition-colors"
-            >
-              <GithubIcon size={16} />
-              Continue with GitHub
-            </button>
-            <button
-              onClick={signInWithGoogle}
-              className="flex items-center gap-3 px-6 py-3 border border-border text-text text-xs font-medium tracking-wider uppercase hover:bg-surface-2 transition-colors"
-            >
-              Continue with Google
-            </button>
+              <div className="flex items-center gap-3 mb-4">
+                <button
+                  onClick={signInWithGithub}
+                  className="flex items-center gap-2 px-6 py-3 bg-accent text-bg text-xs font-medium tracking-wider hover:bg-text transition-colors"
+                >
+                  Get started free <ArrowRight size={14} />
+                </button>
+                <button
+                  onClick={signInWithGoogle}
+                  className="flex items-center gap-2 px-6 py-3 border border-border text-text text-xs font-medium tracking-wider hover:bg-surface-2 transition-colors"
+                >
+                  Continue with Google
+                </button>
+              </div>
+              <p className="text-[10px] text-text-dim tracking-wider">
+                Free and open source. Bring your own API key.
+              </p>
+            </div>
+
+            {/* Right — dithered logo */}
+            <div className="flex items-center justify-center">
+              <div className="w-[420px] h-[420px] relative">
+                <DitheredLogo />
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-4xl mt-24">
-          {[
-            { icon: Map, title: "Knowledge Graph", desc: "A visual map of every paper you've read with category clusters and connections between them." },
-            { icon: Brain, title: "AI Summaries & Chat", desc: "Get instant summaries and ask questions about any paper. Full context, no hallucination." },
-            { icon: Shield, title: "Legitness Score", desc: "AI rates each paper on honesty, rigor, novelty, and credibility. Know what you're reading." },
-            { icon: Zap, title: "Track Everything", desc: "Paste any arXiv link or PDF. Mark as read, take notes, sort by date, category, or score." },
-          ].map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="border border-border p-5">
-              <Icon size={18} className="text-text-dim mb-3" />
-              <h3 className="text-xs font-bold tracking-wider uppercase text-accent mb-2">{title}</h3>
-              <p className="text-[11px] text-text-dim leading-relaxed">{desc}</p>
-            </div>
-          ))}
+        <div className="max-w-7xl mx-auto px-8 py-20 border-t border-border">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {[
+              { icon: Map, title: "Knowledge Graph", desc: "A visual map of every paper you've read with category clusters and connections between them." },
+              { icon: Brain, title: "AI Summaries & Chat", desc: "Get instant summaries and ask questions about any paper. Full context, no hallucination." },
+              { icon: Shield, title: "Legitness Score", desc: "AI rates each paper on honesty, rigor, novelty, and credibility. Know what you're reading." },
+              { icon: Zap, title: "Track Everything", desc: "Paste any arXiv link or PDF. Mark as read, take notes, sort by date, category, or score." },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="border border-border p-6">
+                <Icon size={20} className="text-text-dim mb-4" />
+                <h3 className="text-xs font-bold tracking-wider uppercase text-accent mb-2">{title}</h3>
+                <p className="text-[11px] text-text-dim leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </main>
 
@@ -119,11 +211,11 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Big background text — overflows and clips at bottom */}
-        <div className="max-w-6xl mx-auto mt-8 overflow-hidden h-[200px]">
+        {/* Big background text */}
+        <div className="max-w-6xl mx-auto mt-8 overflow-hidden h-[180px]">
           <p
             className="font-bold leading-none select-none text-white/[0.04]"
-            style={{ fontSize: "clamp(150px, 20vw, 300px)", letterSpacing: "-0.03em" }}
+            style={{ fontSize: "clamp(150px, 18vw, 280px)", letterSpacing: "-0.03em" }}
           >
             Graphene
           </p>
