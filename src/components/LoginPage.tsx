@@ -174,7 +174,7 @@ export default function LoginPage() {
       {/* Hero — split layout */}
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-8 pt-20 pb-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center min-h-[500px]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center min-h-[500px]">
             {/* Left — text */}
             <div>
               <h1 className="text-5xl font-bold text-accent leading-[1.1] tracking-tight mb-6">
