@@ -332,13 +332,13 @@ export default function PaperDetail({
                         }}>
                           {legit}
                         </p>
-                        <p className="text-[9px] text-text-dim mt-1">
-                          {legit >= 85 ? "Seminal"
+                        <p className="text-[9px] text-text-dim mt-1 italic leading-tight">
+                          {(paper as any).bs_score.legitness_why || (legit >= 85 ? "Seminal"
                             : legit >= 70 ? "Legit"
                             : legit >= 50 ? "Decent"
                             : legit >= 30 ? "Questionable"
                             : legit >= 15 ? "Sussy"
-                            : "Pure BS"}
+                            : "Pure BS")}
                         </p>
                       </>
                     );

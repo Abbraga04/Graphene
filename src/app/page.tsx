@@ -217,6 +217,23 @@ function AppContent({ user, signOut, getToken }: { user: { id: string; email?: s
     }
   };
 
+  // Toggle public visibility
+  const handleTogglePublic = async () => {
+    if (!selectedPaper) return;
+    try {
+      const res = await authFetch(`/api/papers/${encodeURIComponent(selectedPaper.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_public: !(selectedPaper as any).is_public }),
+      });
+      const data = await res.json();
+      setSelectedPaper(data.paper);
+      fetchPapers();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // Update notes
   const handleUpdateNotes = async (notes: string) => {
     if (!selectedPaper) return;
@@ -269,7 +286,7 @@ function AppContent({ user, signOut, getToken }: { user: { id: string; email?: s
                 Adding paper...
               </span>
             ) : (
-              <>{stats.total} papers / {stats.read} read / {stats.connections} links</>
+              <>{stats.total} papers / {stats.read} read / {stats.connections} connections</>
             )}
           </span>
         </div>
@@ -469,6 +486,7 @@ function AppContent({ user, signOut, getToken }: { user: { id: string; email?: s
                   }}
                   onToggleRead={handleToggleRead}
                   onUpdateNotes={handleUpdateNotes}
+                  onTogglePublic={handleTogglePublic}
                   getToken={getToken}
                 />
               </div>

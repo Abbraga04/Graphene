@@ -177,11 +177,11 @@ export default function LoginPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 items-center min-h-[500px]">
             {/* Left — text */}
             <div>
-              <h1 className="text-5xl font-bold text-accent leading-[1.1] tracking-tight mb-6">
+              <h1 className="text-5xl font-bold text-accent leading-[1.1] tracking-tight mb-2">
                 Open-source research<br />
                 paper management.
               </h1>
-              <p className="text-base text-text-dim leading-relaxed mb-8 max-w-md">
+              <p className="text-base text-text-dim leading-relaxed mb-4 max-w-md">
                 Collect, read, and track academic papers in one place.
                 AI-powered summaries, a knowledge graph, and a
                 built-in legitness detector.

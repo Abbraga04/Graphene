@@ -147,13 +147,21 @@ export default function PaperGraph({
     return () => ro.disconnect();
   }, []);
 
-  // Build graph data
+  // Build graph data — only when papers/connections change, not on resize
+  const papersKey = useMemo(() => papers.map(p => p.id).sort().join(","), [papers]);
   useEffect(() => {
+    // Only rebuild if papers actually changed
+    const existingIds = new Set(nodesRef.current.map(n => n.id));
+    const newIds = new Set(papers.map(p => p.id));
+    const same = existingIds.size === newIds.size && [...existingIds].every(id => newIds.has(id));
+    if (same && nodesRef.current.length > 0) return;
+
     const { nodes, edges } = buildNodes(papers, connections, dims.w, dims.h);
     nodesRef.current = nodes;
     edgesRef.current = edges;
     settledRef.current = false;
-  }, [papers, connections, dims.w, dims.h]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [papersKey]);
 
   // Screen <-> world transforms
   const toWorld = useCallback((sx: number, sy: number) => {
