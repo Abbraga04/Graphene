@@ -53,6 +53,7 @@ export default function PaperGraph({
   const graphRef = useRef<any>(null);
   const selectedRef = useRef(selectedPaperId);
   selectedRef.current = selectedPaperId;
+  const hoveredRef = useRef<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
   useEffect(() => {
@@ -177,14 +178,16 @@ export default function PaperGraph({
       const x = node.x as number;
       const y = node.y as number;
       const isSelected = node.id === selectedRef.current;
+      const isHovered = node.id === hoveredRef.current;
+      const showLabel = isSelected || isHovered;
       const color = getClusterColor(node.primaryCat);
-      const r = isSelected ? 6 : 4;
+      const r = isSelected ? 7 : isHovered ? 6 : 4;
 
       // Glow
-      if (isSelected) {
+      if (isSelected || isHovered) {
         ctx.beginPath();
-        ctx.arc(x, y, r + 3, 0, 2 * Math.PI);
-        ctx.fillStyle = color.fill.replace("0.07", "0.3");
+        ctx.arc(x, y, r + 4, 0, 2 * Math.PI);
+        ctx.fillStyle = color.fill.replace("0.07", "0.25");
         ctx.fill();
       }
 
@@ -194,16 +197,23 @@ export default function PaperGraph({
       ctx.fillStyle = isSelected ? "#ffffff" : node.isRead ? color.node : color.node + "99";
       ctx.fill();
 
-      // Title
-      const fontSize = Math.max(9 / globalScale, 2.5);
-      ctx.font = `${fontSize}px JetBrains Mono, monospace`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-      const label = node.title.length > 35 ? node.title.slice(0, 35) + "..." : node.title;
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
-      ctx.fillText(label, x + 0.3, y + r + 2.5 + 0.3);
-      ctx.fillStyle = isSelected ? "#ffffff" : "#bbbbbb";
-      ctx.fillText(label, x, y + r + 2.5);
+      // Title — only on hover or selected
+      if (showLabel) {
+        const fontSize = Math.max(11 / globalScale, 4);
+        ctx.font = `600 ${fontSize}px JetBrains Mono, monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        const label = node.title.length > 50 ? node.title.slice(0, 50) + "..." : node.title;
+
+        // Background pill
+        const metrics = ctx.measureText(label);
+        const px = 4, py = 2;
+        ctx.fillStyle = "rgba(0,0,0,0.85)";
+        ctx.fillRect(x - metrics.width / 2 - px, y + r + 2, metrics.width + px * 2, fontSize + py * 2);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(label, x, y + r + 2 + py);
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
@@ -237,6 +247,7 @@ export default function PaperGraph({
         }}
         onNodeClick={handleNodeClick}
         onNodeHover={(node: any) => {
+          hoveredRef.current = node?.id || null;
           if (containerRef.current) {
             containerRef.current.style.cursor = node ? "pointer" : "default";
           }

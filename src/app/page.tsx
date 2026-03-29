@@ -226,7 +226,7 @@ export default function Home() {
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
             <img src="/graphene.png" alt="Graphene" className="w-6 h-6 invert" />
-            <span className="text-sm font-bold tracking-[0.2em] uppercase text-accent">
+            <span className="text-sm tracking-[0.2em] uppercase text-accent" style={{ fontWeight: 800 }}>
               Graphene
             </span>
           </button>
