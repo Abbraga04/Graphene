@@ -15,8 +15,8 @@ function GithubIcon({ size = 16 }: { size?: number }) {
 
 function DitheredLogo() {
   return (
-    <div className="w-[350px] h-[350px] flex items-center justify-center">
-      <img src="/graphene.png" alt="Graphene" className="w-[280px] h-[280px] invert opacity-90" style={{ clipPath: "inset(4%)" }} />
+    <div className="w-[500px] h-[500px] flex items-center justify-center">
+      <img src="/graphene.png" alt="Graphene" className="w-[450px] h-[450px] invert opacity-90" style={{ clipPath: "inset(4%)" }} />
     </div>
   );
 }
