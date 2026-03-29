@@ -1,6 +1,7 @@
 "use client";
 
 import { Paper } from "@/lib/supabase";
+import { humanCategory } from "@/lib/categories";
 import { BookOpen, Check, Clock, ChevronRight } from "lucide-react";
 
 export default function PaperList({
@@ -80,7 +81,7 @@ export default function PaperList({
                         key={cat}
                         className="text-[9px] text-text-dim border border-border px-1.5 py-0.5"
                       >
-                        {cat}
+                        {humanCategory(cat)}
                       </span>
                     ))}
                   </div>

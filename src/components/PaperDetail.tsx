@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Paper, ChatMessage } from "@/lib/supabase";
+import { humanCategory } from "@/lib/categories";
 import {
   X,
   BookOpen,
@@ -183,7 +184,7 @@ export default function PaperDetail({
                       key={cat}
                       className="text-[10px] border border-border px-2 py-1 text-text"
                     >
-                      {cat}
+                      {humanCategory(cat)}
                     </span>
                   ))}
                 </div>

@@ -35,18 +35,13 @@ export async function GET(
             return NextResponse.json({ fallback: "pdf" });
           }
 
-          // Strip arxiv banner, header, footer, beta badge, report button
+          // Strip all scripts (they inject beta badge, report button, etc.)
+          html = html.replace(/<script[\s\S]*?<\/script>/gi, "");
+          // Strip header, nav, footer
           html = html
             .replace(/<header[\s\S]*?<\/header>/gi, "")
             .replace(/<nav[\s\S]*?<\/nav>/gi, "")
-            .replace(/<footer[\s\S]*?<\/footer>/gi, "")
-            .replace(/<div[^>]*class="[^"]*ltx_page_header[^"]*"[\s\S]*?<\/div>/gi, "")
-            .replace(/<div[^>]*class="[^"]*ltx_page_footer[^"]*"[\s\S]*?<\/div>/gi, "")
-            .replace(/<div[^>]*class="[^"]*html-header-message[^"]*"[\s\S]*?<\/div>/gi, "")
-            .replace(/<div[^>]*class="[^"]*package-alerts[^"]*"[\s\S]*?<\/div>/gi, "")
-            .replace(/<a[^>]*class="[^"]*corner-ribbon[^"]*"[\s\S]*?<\/a>/gi, "")
-            .replace(/<button[^>]*[Rr]eport[\s\S]*?<\/button>/gi, "")
-            .replace(/<div[^>]*style="[^"]*position:\s*fixed[^"]*"[\s\S]*?<\/div>/gi, "");
+            .replace(/<footer[\s\S]*?<\/footer>/gi, "");
 
           // Inject dark theme CSS
           const darkCss = `<style>
