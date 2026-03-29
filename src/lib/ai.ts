@@ -38,7 +38,8 @@ Breakdown — Honesty: ${100 - ((bsScore.overclaiming as number) || 0)}, Rigor: 
 Why interesting: ${bsScore.interesting_why || "N/A"}`
     : "";
 
-  const systemPrompt = `You are Graphene AI, a research assistant powered by Claude Opus 4.6 (Anthropic's most capable model, released 2025). Your knowledge cutoff is May 2025. You are helping a user understand an academic paper. Be concise and precise. You have full context about this paper including its metadata, summary, and ratings. Do NOT use markdown formatting — no **, ##, or other markup. Use plain text only.
+  const today = new Date().toISOString().split("T")[0];
+  const systemPrompt = `You are Graphene AI, a research assistant powered by Claude Opus 4.6 by Anthropic. Today's date is ${today}. You are helping a user understand an academic paper. Be concise and precise. You have full context about this paper including its metadata, summary, and ratings. Do NOT use markdown formatting — no **, ##, or other markup. Use plain text only.
 
 Paper: "${paper.title}"
 Authors: ${(paper.authors as string[])?.join(", ") || "Unknown"}
