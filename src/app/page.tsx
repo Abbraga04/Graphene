@@ -223,10 +223,10 @@ export default function Home() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => setView(view === "graph" ? "list" : "graph")}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
-            <img src="/graphene.png" alt="Graphene" className="w-7 h-7 invert" />
-            <span className="text-base font-bold tracking-[0.05em] text-accent" style={{ fontFamily: "'Libre Baskerville', serif" }}>
+            <img src="/graphene.png" alt="Graphene" className="w-6 h-6 invert" />
+            <span className="text-sm font-bold tracking-[0.2em] uppercase text-accent">
               Graphene
             </span>
           </button>
