@@ -3,6 +3,7 @@
 import { useAuth } from "./AuthProvider";
 import { ArrowRight, Shield, Zap, Brain, Map } from "lucide-react";
 import { useEffect, useRef } from "react";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 function GithubIcon({ size = 16 }: { size?: number }) {
   return (
@@ -13,141 +14,63 @@ function GithubIcon({ size = 16 }: { size?: number }) {
 }
 
 function DitheredLogo() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animRef = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    const W = 500, H = 500;
-    canvas.width = W;
-    canvas.height = H;
-
-    // Load logo and create brightness map
-    const logoImg = new Image();
-    logoImg.src = "/graphene.png";
-    let logoData: Uint8ClampedArray | null = null;
-    const LOGO_SIZE = 200;
-
-    logoImg.onload = () => {
-      const tmp = document.createElement("canvas");
-      tmp.width = LOGO_SIZE;
-      tmp.height = LOGO_SIZE;
-      const tc = tmp.getContext("2d")!;
-      tc.drawImage(logoImg, 0, 0, LOGO_SIZE, LOGO_SIZE);
-      const id = tc.getImageData(0, 0, LOGO_SIZE, LOGO_SIZE);
-      logoData = id.data;
-    };
-
-    const chars = " .:-=+*#%@";
-    const CELL = 7;
-    const cols = Math.floor(W / CELL);
-    const rows = Math.floor(H / CELL);
-
-    // Matrix rain state per column
-    const drops: number[] = new Array(cols).fill(0).map(() => Math.random() * rows);
-    const speeds: number[] = new Array(cols).fill(0).map(() => 0.3 + Math.random() * 0.8);
-
+    const el = containerRef.current;
+    if (!el) return;
     let time = 0;
-
-    const render = () => {
-      time += 0.012;
-      ctx.fillStyle = "rgba(0,0,0,0.15)";
-      ctx.fillRect(0, 0, W, H);
-
-      if (!logoData) { animRef.current = requestAnimationFrame(render); return; }
-
-      // 3D rotation
-      const rotY = time * 0.8;
-      const rotX = Math.sin(time * 0.4) * 0.3;
-      const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
-      const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
-      const fov = 400;
-
-      ctx.font = `${CELL}px JetBrains Mono, monospace`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const sx = (col / cols - 0.5) * 2;
-          const sy = (row / rows - 0.5) * 2;
-
-          // Map screen position back to logo UV via inverse 3D projection
-          let x3 = sx * 200;
-          let y3 = sy * 200;
-          let z3 = 0;
-
-          // Inverse rotate to find logo coordinate
-          let rx = x3 * cosY - z3 * sinY;
-          let rz = x3 * sinY + z3 * cosY;
-          let ry = y3 * cosX + rz * sinX;
-
-          // Map to logo pixel
-          const lu = Math.floor((rx / 200 + 0.5) * LOGO_SIZE);
-          const lv = Math.floor((ry / 200 + 0.5) * LOGO_SIZE);
-
-          let logoBrightness = 0;
-          if (lu >= 0 && lu < LOGO_SIZE && lv >= 0 && lv < LOGO_SIZE) {
-            const idx = (lv * LOGO_SIZE + lu) * 4;
-            const avg = (logoData[idx] + logoData[idx + 1] + logoData[idx + 2]) / 3;
-            logoBrightness = avg < 128 ? 1 : 0; // dark parts = logo shape
-          }
-
-          // Matrix rain effect
-          const dropY = drops[col];
-          const distFromDrop = row - dropY;
-          let rainBrightness = 0;
-          if (distFromDrop >= 0 && distFromDrop < 15) {
-            rainBrightness = distFromDrop === 0 ? 1 : Math.max(0, 0.4 - distFromDrop * 0.03);
-          }
-
-          // Combine: logo shape gets bright, rain adds ambient
-          const brightness = Math.max(logoBrightness * 0.8, rainBrightness * 0.15);
-          if (brightness < 0.02) continue;
-
-          // Pick character
-          const charIdx = Math.min(chars.length - 1, Math.floor(brightness * chars.length));
-          const ch = logoBrightness > 0
-            ? chars[charIdx]
-            : String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96)); // katakana for rain
-
-          // Color
-          if (logoBrightness > 0) {
-            const perspScale = fov / (fov + Math.abs(sinY) * 100);
-            const b = Math.floor(brightness * 255 * perspScale);
-            ctx.fillStyle = `rgb(${b},${b},${b})`;
-          } else {
-            const g = Math.floor(rainBrightness * 80);
-            ctx.fillStyle = `rgba(${g},${Math.floor(g * 1.5)},${g},0.6)`;
-          }
-
-          ctx.fillText(ch, col * CELL + CELL / 2, row * CELL + CELL / 2);
-        }
-      }
-
-      // Update rain drops
-      for (let i = 0; i < cols; i++) {
-        drops[i] += speeds[i];
-        if (drops[i] > rows + 15) {
-          drops[i] = -Math.random() * 20;
-          speeds[i] = 0.3 + Math.random() * 0.8;
-        }
-      }
-
-      animRef.current = requestAnimationFrame(render);
+    const animate = () => {
+      time += 0.005;
+      const rotY = time * 40;
+      const rotX = Math.sin(time * 0.8) * 15;
+      el.style.transform = `perspective(800px) rotateY(${rotY}deg) rotateX(${rotX}deg)`;
+      requestAnimationFrame(animate);
     };
-
-    render();
-    return () => cancelAnimationFrame(animRef.current);
+    animate();
   }, []);
 
+  // Multiple stacked layers to create 3D depth/extrusion effect
+  const layers = 12;
+
   return (
-    <canvas
-      ref={canvasRef}
-      className="w-full h-full"
-    />
+    <div className="w-[400px] h-[400px] flex items-center justify-center" style={{ perspective: "800px" }}>
+      <div ref={containerRef} className="relative w-[280px] h-[280px]" style={{ transformStyle: "preserve-3d" }}>
+        {Array.from({ length: layers }).map((_, i) => {
+          const z = (i - layers / 2) * 3;
+          const isFront = i === 0;
+          const isBack = i === layers - 1;
+          const opacity = isFront || isBack ? 0.9 : 0.08 + (1 - Math.abs(i - layers / 2) / (layers / 2)) * 0.15;
+
+          return (
+            <img
+              key={i}
+              src="/graphene.png"
+              alt=""
+              className="absolute inset-0 w-full h-full"
+              style={{
+                transform: `translateZ(${z}px)`,
+                filter: `invert(1) brightness(${isFront ? 1.2 : 0.6}) contrast(${isFront ? 1.5 : 2.5}) grayscale(1)`,
+                opacity,
+                mixBlendMode: "screen",
+                imageRendering: "pixelated",
+              }}
+            />
+          );
+        })}
+
+        {/* Dot/dither overlay */}
+        <div
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          style={{
+            transform: `translateZ(${(layers / 2) * 3 + 2}px)`,
+            backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.3) 1px, transparent 1px)`,
+            backgroundSize: "4px 4px",
+            mixBlendMode: "multiply",
+          }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -251,7 +174,7 @@ export default function LoginPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border px-8 py-12">
+      <footer className="border-t border-border px-8 py-12 relative overflow-hidden">
         <div className="max-w-6xl mx-auto flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -282,11 +205,11 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Big background text — shows top, clips bottom */}
-        <div className="w-full mt-12 overflow-hidden" style={{ height: "clamp(60px, 8vw, 110px)" }}>
+        {/* Big background text — absolute, no extra height */}
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none select-none overflow-hidden" style={{ height: "clamp(80px, 10vw, 140px)" }}>
           <p
-            className="font-bold leading-[0.85] select-none text-white/[0.05] text-center w-full"
-            style={{ fontSize: "clamp(80px, 10vw, 160px)", letterSpacing: "-0.02em" }}
+            className="font-bold leading-[0.85] text-white/[0.05] text-center w-full"
+            style={{ fontSize: "clamp(100px, 12vw, 200px)", letterSpacing: "-0.02em" }}
           >
             Graphene
           </p>
