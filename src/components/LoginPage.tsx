@@ -35,152 +35,144 @@ function DitheredLogo() {
       [63,31,55,23,61,29,53,21],
     ];
 
-    // 3D projection helpers
-    const fov = 400;
-    function project(x: number, y: number, z: number): [number, number, number] {
-      const scale = fov / (fov + z);
-      return [x * scale + W / 2, y * scale + H / 2, scale];
-    }
+    // Load the actual logo and extract as a flat texture
+    const logoImg = new Image();
+    logoImg.src = "/graphene.png";
+    let logoCanvas: HTMLCanvasElement | null = null;
 
-    function rotateY(x: number, y: number, z: number, a: number): [number, number, number] {
-      return [x * Math.cos(a) + z * Math.sin(a), y, -x * Math.sin(a) + z * Math.cos(a)];
-    }
-
-    function rotateX(x: number, y: number, z: number, a: number): [number, number, number] {
-      return [x, y * Math.cos(a) - z * Math.sin(a), y * Math.sin(a) + z * Math.cos(a)];
-    }
-
-    // Build the 3D hex aperture geometry — front face + back face + sides
-    const R = 150; // outer radius
-    const r = 55;  // inner radius
-    const depth = 40; // thickness
-    const sides = 6;
-
-    function getHexPoints(radius: number, zOff: number) {
-      const pts: [number, number, number][] = [];
-      for (let i = 0; i < sides; i++) {
-        const a = (Math.PI * 2 * i) / sides - Math.PI / 6;
-        pts.push([Math.cos(a) * radius, Math.sin(a) * radius, zOff]);
+    logoImg.onload = () => {
+      // Pre-render inverted logo (white shape on transparent)
+      logoCanvas = document.createElement("canvas");
+      logoCanvas.width = 256;
+      logoCanvas.height = 256;
+      const lc = logoCanvas.getContext("2d")!;
+      lc.drawImage(logoImg, 0, 0, 256, 256);
+      const ld = lc.getImageData(0, 0, 256, 256);
+      const p = ld.data;
+      for (let i = 0; i < p.length; i += 4) {
+        const avg = (p[i] + p[i + 1] + p[i + 2]) / 3;
+        const isShape = avg < 128;
+        p[i] = p[i + 1] = p[i + 2] = 255;
+        p[i + 3] = isShape ? 255 : 0;
       }
-      return pts;
-    }
+      lc.putImageData(ld, 0, 0);
+    };
 
     let time = 0;
 
     const render = () => {
-      time += 0.01;
+      time += 0.008;
+      ctx.clearRect(0, 0, W, H);
+
+      if (!logoCanvas) {
+        animRef.current = requestAnimationFrame(render);
+        return;
+      }
 
       const tmp = document.createElement("canvas");
       tmp.width = W;
       tmp.height = H;
       const tc = tmp.getContext("2d")!;
 
-      const ry = time;
-      const rx = Math.sin(time * 0.7) * 0.3;
+      // 3D rotation of a flat plane with the logo on it
+      const rotY = time;
+      const rotX = Math.sin(time * 0.5) * 0.25;
+      const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+      const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+      const size = 200;
 
-      // Get all hex vertices
-      const outerFront = getHexPoints(R, -depth / 2);
-      const outerBack = getHexPoints(R, depth / 2);
-      const innerFront = getHexPoints(r, -depth / 2);
-      const innerBack = getHexPoints(r, depth / 2);
+      // Four corners of the logo plane in 3D
+      const corners3D = [
+        [-size, -size, 0],
+        [size, -size, 0],
+        [size, size, 0],
+        [-size, size, 0],
+      ];
 
-      // Transform all points
-      function xform(p: [number, number, number]): [number, number, number] {
-        let [x, y, z] = rotateX(p[0], p[1], p[2], rx);
-        [x, y, z] = rotateY(x, y, z, ry);
-        return project(x, y, z + 200);
-      }
+      // Rotate and project
+      const fov = 500;
+      const projected = corners3D.map(([x, y, z]) => {
+        // Rotate Y
+        let rx = x * cosY + z * sinY;
+        let rz = -x * sinY + z * cosY;
+        // Rotate X
+        let ry = y * cosX - rz * sinX;
+        rz = y * sinX + rz * cosX;
+        // Project
+        const d = fov / (fov + rz + 300);
+        return [rx * d + W / 2, ry * d + H / 2];
+      });
 
-      const ofP = outerFront.map(xform);
-      const obP = outerBack.map(xform);
-      const ifP = innerFront.map(xform);
-      const ibP = innerBack.map(xform);
-
-      // Draw function
-      function drawLine(a: [number, number, number], b: [number, number, number], brightness: number) {
-        tc.strokeStyle = `rgba(255,255,255,${brightness})`;
-        tc.lineWidth = 2;
+      // Use CSS-style 2D transform to map the logo texture onto the projected quad
+      // We'll use two triangles
+      function drawTexturedTriangle(
+        img: HTMLCanvasElement,
+        sx0: number, sy0: number, sx1: number, sy1: number, sx2: number, sy2: number,
+        dx0: number, dy0: number, dx1: number, dy1: number, dx2: number, dy2: number
+      ) {
+        tc.save();
         tc.beginPath();
-        tc.moveTo(a[0], a[1]);
-        tc.lineTo(b[0], b[1]);
-        tc.stroke();
-      }
-
-      function drawPoly(pts: [number, number, number][], brightness: number) {
-        tc.strokeStyle = `rgba(255,255,255,${brightness})`;
-        tc.lineWidth = 2;
-        tc.beginPath();
-        pts.forEach((p, i) => i === 0 ? tc.moveTo(p[0], p[1]) : tc.lineTo(p[0], p[1]));
+        tc.moveTo(dx0, dy0);
+        tc.lineTo(dx1, dy1);
+        tc.lineTo(dx2, dy2);
         tc.closePath();
-        tc.stroke();
+        tc.clip();
+
+        const denom = sx0 * (sy1 - sy2) + sx1 * (sy2 - sy0) + sx2 * (sy0 - sy1);
+        if (Math.abs(denom) < 0.001) { tc.restore(); return; }
+
+        const a = (dx0 * (sy1 - sy2) + dx1 * (sy2 - sy0) + dx2 * (sy0 - sy1)) / denom;
+        const b = (dx0 * (sx2 - sx1) + dx1 * (sx0 - sx2) + dx2 * (sx1 - sx0)) / denom;
+        const c_ = (dx0 * (sx1 * sy2 - sx2 * sy1) + dx1 * (sx2 * sy0 - sx0 * sy2) + dx2 * (sx0 * sy1 - sx1 * sy0)) / denom;
+        const d = (dy0 * (sy1 - sy2) + dy1 * (sy2 - sy0) + dy2 * (sy0 - sy1)) / denom;
+        const e = (dy0 * (sx2 - sx1) + dy1 * (sx0 - sx2) + dy2 * (sx1 - sx0)) / denom;
+        const f = (dy0 * (sx1 * sy2 - sx2 * sy1) + dy1 * (sx2 * sy0 - sx0 * sy2) + dy2 * (sx0 * sy1 - sx1 * sy0)) / denom;
+
+        tc.setTransform(a, d, b, e, c_, f);
+        tc.globalAlpha = 0.9;
+        tc.drawImage(img, 0, 0);
+        tc.restore();
       }
 
-      // Draw edges — outer front, outer back, inner front, inner back
-      drawPoly(ofP, 0.9);
-      drawPoly(obP, 0.4);
-      drawPoly(ifP, 0.9);
-      drawPoly(ibP, 0.4);
+      const [p0, p1, p2, p3] = projected;
+      const iw = logoCanvas.width, ih = logoCanvas.height;
 
-      // Side edges connecting front to back (outer)
-      for (let i = 0; i < sides; i++) {
-        drawLine(ofP[i], obP[i], 0.5);
-      }
-
-      // Side edges connecting front to back (inner)
-      for (let i = 0; i < sides; i++) {
-        drawLine(ifP[i], ibP[i], 0.5);
-      }
-
-      // Blade lines: connect outer vertex to offset inner vertex (front)
-      for (let i = 0; i < sides; i++) {
-        drawLine(ofP[i], ifP[(i + 1) % sides], 0.7);
-      }
-
-      // Blade lines (back)
-      for (let i = 0; i < sides; i++) {
-        drawLine(obP[i], ibP[(i + 1) % sides], 0.3);
-      }
-
-      // Fill front face polygons lightly
-      for (let i = 0; i < sides; i++) {
-        const next = (i + 1) % sides;
-        tc.fillStyle = "rgba(255,255,255,0.06)";
-        tc.beginPath();
-        tc.moveTo(ofP[i][0], ofP[i][1]);
-        tc.lineTo(ofP[next][0], ofP[next][1]);
-        tc.lineTo(ifP[(next + 1) % sides][0], ifP[(next + 1) % sides][1]);
-        tc.lineTo(ifP[(i + 1) % sides][0], ifP[(i + 1) % sides][1]);
-        tc.closePath();
-        tc.fill();
-      }
+      // Two triangles to cover the quad
+      drawTexturedTriangle(logoCanvas,
+        0, 0, iw, 0, iw, ih,
+        p0[0], p0[1], p1[0], p1[1], p2[0], p2[1]
+      );
+      drawTexturedTriangle(logoCanvas,
+        0, 0, iw, ih, 0, ih,
+        p0[0], p0[1], p2[0], p2[1], p3[0], p3[1]
+      );
 
       // Dithering
       const imgData = tc.getImageData(0, 0, W, H);
-      const d = imgData.data;
+      const dd = imgData.data;
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
           const i = (y * W + x) * 4;
-          const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
-          if (avg < 2) { d[i + 3] = 0; continue; }
+          const a = dd[i + 3];
+          if (a < 5) { dd[i + 3] = 0; continue; }
+          const avg = dd[i];
           const threshold = (bayer[y % 8][x % 8] / 64) * 255;
-          const on = avg > threshold * 0.5;
-          d[i] = d[i + 1] = d[i + 2] = 255;
-          d[i + 3] = on ? Math.min(255, Math.round(avg * 2)) : 0;
+          const on = avg > threshold * 0.4;
+          dd[i] = dd[i + 1] = dd[i + 2] = 255;
+          dd[i + 3] = on ? Math.min(255, a) : 0;
         }
       }
       tc.putImageData(imgData, 0, 0);
 
-      // Render to main canvas
-      ctx.clearRect(0, 0, W, H);
       ctx.drawImage(tmp, 0, 0);
 
       // Glow
       ctx.globalCompositeOperation = "screen";
-      ctx.filter = "blur(4px)";
+      ctx.filter = "blur(5px)";
       ctx.globalAlpha = 0.3;
       ctx.drawImage(tmp, 0, 0);
-      ctx.filter = "blur(12px)";
-      ctx.globalAlpha = 0.15;
+      ctx.filter = "blur(15px)";
+      ctx.globalAlpha = 0.12;
       ctx.drawImage(tmp, 0, 0);
       ctx.filter = "none";
       ctx.globalAlpha = 1;
