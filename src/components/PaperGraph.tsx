@@ -242,18 +242,21 @@ export default function PaperGraph({
           }
         }}
         enableNodeDrag={false}
+        enablePanInteraction={true}
+        enableZoomInteraction={true}
         onRenderFramePre={paintBefore}
         linkColor={() => "rgba(255,255,255,0.08)"}
         linkWidth={1}
         backgroundColor="#000000"
-        cooldownTime={3000}
-        d3AlphaDecay={0.02}
-        d3VelocityDecay={0.3}
+        cooldownTicks={100}
+        warmupTicks={100}
+        d3AlphaDecay={0.05}
+        d3VelocityDecay={0.4}
         d3Force="charge"
         d3ForceConfig={{
-          charge: { strength: -100, distanceMax: 120 },
-          link: { distance: 40 },
-          center: { strength: 0.05 },
+          charge: { strength: -80, distanceMax: 100 },
+          link: { distance: 35 },
+          center: { strength: 0.1 },
         }}
       />
     </div>
