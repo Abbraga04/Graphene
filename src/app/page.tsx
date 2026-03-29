@@ -13,6 +13,8 @@ import {
   Search,
   Hexagon,
   FileText,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 import PaperReader from "@/components/PaperReader";
@@ -33,6 +35,7 @@ export default function Home() {
   const [filter, setFilter] = useState<"all" | "read" | "unread">("all");
   const [searchLocal, setSearchLocal] = useState("");
   const [listWidth, setListWidth] = useState(320);
+  const [listCollapsed, setListCollapsed] = useState(false);
   const [detailWidth, setDetailWidth] = useState(420);
 
   // Fetch all papers
@@ -274,20 +277,42 @@ export default function Home() {
         {/* Sidebar - paper list */}
         {view === "list" && (
           <>
-            <div style={{ width: listWidth }} className="shrink-0 overflow-hidden">
-              <PaperList
-                papers={filteredPapers}
-                selectedId={selectedPaperId}
-                onSelect={selectPaper}
-                filter={filter}
-                onFilterChange={setFilter}
-              />
+            <div
+              style={{ width: listCollapsed ? 0 : listWidth }}
+              className="shrink-0 overflow-hidden transition-[width] duration-200"
+            >
+              <div style={{ width: listWidth }} className="h-full">
+                <PaperList
+                  papers={filteredPapers}
+                  selectedId={selectedPaperId}
+                  onSelect={selectPaper}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                />
+              </div>
             </div>
-            <ResizeHandle
-              onResize={(delta) =>
-                setListWidth((w) => Math.max(200, Math.min(600, w + delta)))
-              }
-            />
+            <div className="shrink-0 flex flex-col">
+              <button
+                onClick={() => setListCollapsed((c) => !c)}
+                className="px-1 py-2 hover:bg-surface-2 transition-colors text-text-dim hover:text-text"
+                title={listCollapsed ? "Show sidebar" : "Hide sidebar"}
+              >
+                {listCollapsed ? (
+                  <PanelLeftOpen size={14} />
+                ) : (
+                  <PanelLeftClose size={14} />
+                )}
+              </button>
+              {!listCollapsed && (
+                <div className="flex-1">
+                  <ResizeHandle
+                    onResize={(delta) =>
+                      setListWidth((w) => Math.max(200, Math.min(600, w + delta)))
+                    }
+                  />
+                </div>
+              )}
+            </div>
           </>
         )}
 
