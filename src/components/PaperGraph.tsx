@@ -207,12 +207,14 @@ export default function PaperGraph({
         cooldownTicks={80}
         d3AlphaDecay={0.04}
         d3VelocityDecay={0.4}
-        d3Force="charge"
-        d3ForceConfig={{
-          charge: { strength: -120, distanceMax: 150 },
-          link: { distance: 45 },
-          center: { strength: 0.08 },
-        }}
+        {...{
+          d3Force: "charge",
+          d3ForceConfig: {
+            charge: { strength: -120, distanceMax: 150 },
+            link: { distance: 45 },
+            center: { strength: 0.08 },
+          },
+        } as any}
       />
     </div>
   );
