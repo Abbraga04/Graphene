@@ -317,18 +317,19 @@ export async function POST(
   "credibility": <0-100, 0 = established authors with track record, 100 = unknown authors making extraordinary claims>,
   "reproducibility": <0-100, 0 = code+data released, clear methodology, 100 = impossible to verify>,
   "verdict": "<one brutally honest sentence about the BS level>",
-  "interesting": <0-100, completely separate from BS. 0 = boring/derivative, 100 = fascinating must-read. A paper can be high-BS but still interesting, or low-BS but boring. Ask: would a smart researcher want to read this? Does it make you think differently? Is the question itself compelling?>,
-  "interesting_why": "<one sentence on why it is or isn't interesting>"
+  "interesting": <0-100, COMPLETELY INDEPENDENT from BS score. Judge the IDEA and QUESTION being explored, NOT the execution or writing quality. A terribly written paper exploring a fascinating question = high interesting. A perfectly executed paper on a boring incremental benchmark = low interesting. Ask: Is the core question or approach genuinely thought-provoking? Would you WANT to discuss this over coffee? Does it connect ideas from different fields in surprising ways? Does it challenge assumptions? A paper using fMRI to understand temporal cognition in AI = very interesting idea regardless of execution. Another BERT variant = not interesting.>,
+  "interesting_why": "<one sentence on why the IDEA is or isn't compelling>"
 }
 
 IMPORTANT scoring rules:
-- "Attention Is All You Need" = ~5 overall (novel idea, rigorous, honest claims, from credible lab)
-- A solid incremental paper with good methodology = ~25 (not novel but honest and useful)
-- Cool idea but sloppy execution = ~40 (novelty saves it somewhat)
-- Combines buzzwords with overclaiming and weak baselines = ~75
-- "We solved AGI" from random authors with no evidence = ~95
+- "Attention Is All You Need" = ~5 overall BS (novel idea, rigorous, honest claims, from credible lab), ~95 interesting
+- A solid incremental paper with good methodology = ~25 BS (honest and useful), ~30 interesting
+- Cool idea but sloppy execution = ~45 BS (novelty saves it somewhat), ~75 interesting (idea matters!)
+- Using fMRI to inform AI temporal reasoning = maybe ~60 BS (overclaiming), but ~80 interesting (genuinely novel question)
+- Combines buzzwords with overclaiming and weak baselines = ~75 BS
+- "We solved AGI" from random authors with no evidence = ~95 BS
 
-The overall score should be a WEIGHTED combination:
+The overall BS score should be a WEIGHTED combination:
 - Overclaiming: 30% weight (biggest BS signal)
 - Rigor: 25% weight
 - Novelty: 20% weight

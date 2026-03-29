@@ -51,12 +51,12 @@ export async function POST() {
   "credibility": <0-100, 0 = established authors, 100 = unknown making wild claims>,
   "reproducibility": <0-100, 0 = code+data released, 100 = impossible to verify>,
   "verdict": "<one brutally honest sentence>",
-  "interesting": <0-100, separate from BS. 0 = boring, 100 = must-read>,
-  "interesting_why": "<one sentence>"
+  "interesting": <0-100, COMPLETELY INDEPENDENT from BS. Judge the IDEA and QUESTION, NOT execution. Fascinating question with bad execution = high interesting. Perfect execution on boring incremental work = low interesting. Would you want to discuss this over coffee?>,
+  "interesting_why": "<one sentence on why the IDEA is or isn't compelling>"
 }
 
-Weighted: overclaiming 30%, rigor 25%, novelty 20%, credibility 15%, reproducibility 10%.
-"Attention Is All You Need" = ~5 overall, ~95 interesting.
+Weighted BS: overclaiming 30%, rigor 25%, novelty 20%, credibility 15%, reproducibility 10%.
+"Attention Is All You Need" = ~5 BS, ~95 interesting. fMRI for AI temporal reasoning = ~60 BS but ~80 interesting.
 
 Authors: ${(paper.authors as string[])?.join(", ") || "unknown"}
 Title: ${paper.title}
