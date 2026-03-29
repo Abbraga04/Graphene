@@ -145,6 +145,48 @@ export async function POST(
     }
   }
 
+  // Fetch full paper text for better AI context
+  let fullText = "";
+  const isArxiv = !id.startsWith("web-");
+  if (isArxiv) {
+    // Try HTML version first (cleaner text)
+    try {
+      const htmlRes = await fetch(`https://arxiv.org/html/${id}`, { signal: AbortSignal.timeout(10000) });
+      if (htmlRes.ok) {
+        const html = await htmlRes.text();
+        if (!html.includes("No HTML for") && !html.includes("HTML is not available")) {
+          fullText = html
+            .replace(/<script[\s\S]*?<\/script>/gi, "")
+            .replace(/<style[\s\S]*?<\/style>/gi, "")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        }
+      }
+    } catch {}
+
+    // Fall back to PDF
+    if (fullText.length < 500) {
+      try {
+        const pdfUrl = paper.pdf_url || `https://arxiv.org/pdf/${id}`;
+        const pdfRes = await fetch(pdfUrl, { signal: AbortSignal.timeout(15000) });
+        if (pdfRes.ok) {
+          const buffer = Buffer.from(await pdfRes.arrayBuffer());
+          const pdfParse = await import("pdf-parse");
+          const parse = typeof pdfParse === "function" ? pdfParse : (pdfParse as { default: Function }).default;
+          const pdfData = await (parse as (buf: Buffer) => Promise<{ text: string }>)(buffer);
+          fullText = pdfData.text;
+        }
+      } catch {}
+    }
+  }
+  // For non-arxiv, fullText was already extracted above in the isWebPaper block
+
+  // Use full text if available, otherwise fall back to abstract
+  const contextForSummary = fullText.length > 500
+    ? fullText.slice(0, 15000)
+    : abstract || "";
+
   // Stream the summary generation
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -169,7 +211,7 @@ export async function POST(
           messages: [
             {
               role: "user",
-              content: `Summarize this academic paper in 3-4 concise bullet points. Focus on key contribution, method, and results. Do NOT use markdown bold (**). Use plain text only.\n\nTitle: ${title}\n\nAbstract: ${abstract}`,
+              content: `Summarize this academic paper in 3-4 concise bullet points. Focus on key contribution, method, and results. Do NOT use markdown formatting. Use plain text only.\n\nTitle: ${title}\n\n${contextForSummary}`,
             },
           ],
         });
