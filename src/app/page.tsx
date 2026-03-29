@@ -11,7 +11,6 @@ import {
   List,
   Loader2,
   Search,
-  FileText,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -222,10 +221,15 @@ export default function Home() {
       {/* Top bar */}
       <header className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-surface">
         <div className="flex items-center gap-4">
-          <img src="/graphene.png" alt="Graphene" className="w-5 h-5 invert" />
-          <span className="text-sm font-semibold tracking-[0.3em] uppercase text-accent">
-            Graphene
-          </span>
+          <button
+            onClick={() => setView(view === "graph" ? "list" : "graph")}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
+            <img src="/graphene.png" alt="Graphene" className="w-5 h-5 invert" />
+            <span className="text-sm font-semibold tracking-[0.3em] uppercase text-accent">
+              Graphene
+            </span>
+          </button>
           <span className="text-xs text-text-dim tracking-wider ml-2 hidden sm:inline">
             {adding ? (
               <span className="flex items-center gap-2">
