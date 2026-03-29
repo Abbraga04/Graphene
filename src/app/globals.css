@@ -14,10 +14,11 @@
 }
 
 @layer base {
-  body {
+  html, body {
     background: var(--color-bg);
     color: var(--color-text);
     font-family: var(--font-mono);
+    overscroll-behavior: none;
   }
 
   ::-webkit-scrollbar {
