@@ -23,17 +23,9 @@ export async function GET(
     .select("*")
     .or(`paper_a.eq.${id},paper_b.eq.${id}`);
 
-  // Get chat history
-  const { data: messages } = await supabase
-    .from("chat_messages")
-    .select("*")
-    .eq("paper_id", id)
-    .order("created_at", { ascending: true });
-
   return NextResponse.json({
     paper,
     connections: connections || [],
-    messages: messages || [],
   });
 }
 

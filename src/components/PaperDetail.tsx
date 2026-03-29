@@ -59,7 +59,11 @@ export default function PaperDetail({
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paperId: paper.id, question: q }),
+        body: JSON.stringify({
+          paperId: paper.id,
+          question: q,
+          history: messages.map((m) => ({ role: m.role, content: m.content })),
+        }),
       });
       const data = await res.json();
       const assistantMsg: ChatMessage = {
