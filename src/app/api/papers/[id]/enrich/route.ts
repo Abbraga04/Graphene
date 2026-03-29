@@ -127,7 +127,7 @@ export async function POST(
         messages: [
           {
             role: "user",
-            content: `Given this paper, return 2-4 short human-readable category labels. Use simple terms like "AI", "Neuroscience", "Robotics", "NLP", "Computer Vision", "Reinforcement Learning", "Frontend Engineering", "Systems", "Security", etc. Return ONLY a JSON array of strings.\n\nTitle: ${title}\nAbstract: ${abstract?.slice(0, 1000) || ""}`,
+            content: `Given this paper, return 2-4 short category labels. Pick from this list ONLY (use these exact strings): "AI", "Machine Learning", "NLP", "Computer Vision", "Reinforcement Learning", "Robotics", "Neuroscience", "Software Engineering", "Systems", "Security", "Databases", "HCI", "Optimization", "Mathematics", "Physics", "Biology", "Healthcare", "Finance", "Education", "Ethics". If none fit well, you may create ONE new short label. Return ONLY a JSON array.\n\nTitle: ${title}\nAbstract: ${abstract?.slice(0, 1000) || ""}`,
           },
         ],
       });
