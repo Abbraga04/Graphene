@@ -1,42 +1,26 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useState, useMemo } from "react";
-import dynamic from "next/dynamic";
+import { useMemo, useState } from "react";
 import { Paper, PaperConnection } from "@/lib/supabase";
 
-const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
-
-const CLUSTER_COLORS: Record<string, { fill: string; stroke: string; node: string }> = {};
-const COLOR_PALETTE = [
-  { fill: "rgba(99,130,255,0.07)", stroke: "rgba(99,130,255,0.25)", node: "#6382ff" },
-  { fill: "rgba(255,130,99,0.07)", stroke: "rgba(255,130,99,0.25)", node: "#ff8263" },
-  { fill: "rgba(99,255,170,0.07)", stroke: "rgba(99,255,170,0.25)", node: "#63ffaa" },
-  { fill: "rgba(255,220,99,0.07)", stroke: "rgba(255,220,99,0.25)", node: "#ffdc63" },
-  { fill: "rgba(190,99,255,0.07)", stroke: "rgba(190,99,255,0.25)", node: "#be63ff" },
-  { fill: "rgba(99,210,255,0.07)", stroke: "rgba(99,210,255,0.25)", node: "#63d2ff" },
-  { fill: "rgba(255,99,170,0.07)", stroke: "rgba(255,99,170,0.25)", node: "#ff63aa" },
-  { fill: "rgba(170,255,99,0.07)", stroke: "rgba(170,255,99,0.25)", node: "#aaff63" },
-];
-
-let colorIdx = 0;
-function getClusterColor(cat: string) {
-  if (!CLUSTER_COLORS[cat]) {
-    CLUSTER_COLORS[cat] = COLOR_PALETTE[colorIdx % COLOR_PALETTE.length];
-    colorIdx++;
-  }
-  return CLUSTER_COLORS[cat];
-}
-
-type GNode = {
-  id: string;
-  title: string;
-  categories: string[];
-  primaryCat: string;
-  isRead: boolean;
-  val: number;
-  x?: number;
-  y?: number;
+type GroupedPapers = {
+  category: string;
+  papers: Paper[];
 };
+
+function groupByCategory(papers: Paper[]): GroupedPapers[] {
+  const map = new Map<string, Paper[]>();
+  for (const p of papers) {
+    const cats = (p.categories as string[]) || [];
+    const primary = cats[0] || "Uncategorized";
+    const arr = map.get(primary) || [];
+    arr.push(p);
+    map.set(primary, arr);
+  }
+  return Array.from(map.entries())
+    .map(([category, papers]) => ({ category, papers }))
+    .sort((a, b) => b.papers.length - a.papers.length);
+}
 
 export default function PaperGraph({
   papers,
@@ -49,187 +33,25 @@ export default function PaperGraph({
   onSelectPaper: (id: string) => void;
   selectedPaperId: string | null;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<any>(null);
-  const selectedRef = useRef(selectedPaperId);
-  selectedRef.current = selectedPaperId;
-  const hoveredRef = useRef<string | null>(null);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const groups = useMemo(() => groupByCategory(papers), [papers]);
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+  // Build connection map for showing links
+  const connectionMap = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const c of connections) {
+      if (!map.has(c.paper_a)) map.set(c.paper_a, new Set());
+      if (!map.has(c.paper_b)) map.set(c.paper_b, new Set());
+      map.get(c.paper_a)!.add(c.paper_b);
+      map.get(c.paper_b)!.add(c.paper_a);
+    }
+    return map;
+  }, [connections]);
 
-    const updateSize = () => {
-      setDimensions({
-        width: el.clientWidth,
-        height: el.clientHeight,
-      });
-    };
-    updateSize();
-
-    // Debounced ResizeObserver to avoid simulation restarts
-    let timeout: NodeJS.Timeout;
-    const ro = new ResizeObserver(() => {
-      clearTimeout(timeout);
-      timeout = setTimeout(updateSize, 100);
-    });
-    ro.observe(el);
-    return () => { ro.disconnect(); clearTimeout(timeout); };
-  }, []);
-
-  const graphData = useMemo(() => {
-    // Reset colors on rebuild
-    colorIdx = 0;
-    Object.keys(CLUSTER_COLORS).forEach((k) => delete CLUSTER_COLORS[k]);
-
-    const nodes: GNode[] = papers.map((p) => {
-      const cats = (p.categories as string[]) || [];
-      const primaryCat = cats[0] || "Uncategorized";
-      getClusterColor(primaryCat);
-      return {
-        id: p.id,
-        title: p.title,
-        categories: cats,
-        primaryCat,
-        isRead: p.is_read,
-        val: 5,
-      };
-    });
-
-    const nodeIds = new Set(papers.map((p) => p.id));
-    const links = connections
-      .filter((c) => nodeIds.has(c.paper_a) && nodeIds.has(c.paper_b))
-      .map((c) => ({ source: c.paper_a, target: c.paper_b }));
-
-    return { nodes, links };
-  }, [papers, connections]);
-
-  // Zoom to fit after layout settles
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (graphRef.current) {
-        graphRef.current.zoomToFit(400, 80);
-      }
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [graphData]);
-
-  const handleNodeClick = useCallback(
-    (node: any, event: MouseEvent) => {
-      event.stopPropagation();
-      if (node.id) {
-        onSelectPaper(String(node.id));
-      }
-    },
-    [onSelectPaper]
-  );
-
-  // Draw venn diagram regions behind nodes
-  const paintBefore = useCallback(
-    (ctx: CanvasRenderingContext2D, globalScale: number) => {
-      // Group nodes by primary category
-      const clusters = new Map<string, { x: number; y: number }[]>();
-      for (const node of graphData.nodes) {
-        if (node.x == null || node.y == null) continue;
-        const pts = clusters.get(node.primaryCat) || [];
-        pts.push({ x: node.x, y: node.y });
-        clusters.set(node.primaryCat, pts);
-      }
-
-      clusters.forEach((points, cat) => {
-        if (points.length === 0) return;
-        const color = getClusterColor(cat);
-
-        // Calculate center and radius
-        const cx = points.reduce((s, p) => s + p.x, 0) / points.length;
-        const cy = points.reduce((s, p) => s + p.y, 0) / points.length;
-        let maxDist = 0;
-        for (const p of points) {
-          const d = Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2);
-          if (d > maxDist) maxDist = d;
-        }
-        const radius = Math.min(Math.max(maxDist + 35, 50), 150);
-
-        // Draw filled circle (venn region)
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = color.fill;
-        ctx.fill();
-        ctx.strokeStyle = color.stroke;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        // Category label
-        const fontSize = Math.max(14 / globalScale, 5);
-        ctx.font = `600 ${fontSize}px JetBrains Mono, monospace`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = color.stroke;
-        ctx.fillText(cat.toUpperCase(), cx, cy - radius + fontSize + 2);
-      });
-    },
-    [graphData.nodes]
-  );
-
-  // Custom node rendering
-  const paintNode = useCallback(
-    (node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      const x = node.x as number;
-      const y = node.y as number;
-      const isSelected = node.id === selectedRef.current;
-      const isHovered = node.id === hoveredRef.current;
-      const showLabel = isSelected || isHovered;
-      const r = isSelected ? 8 : isHovered ? 7 : 5;
-
-      // Glow
-      if (isSelected || isHovered) {
-        ctx.beginPath();
-        ctx.arc(x, y, r + 5, 0, 2 * Math.PI);
-        ctx.fillStyle = "rgba(255,255,255,0.1)";
-        ctx.fill();
-      }
-
-      // Node dot
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, 2 * Math.PI);
-      ctx.fillStyle = isSelected ? "#ffffff" : node.isRead ? "#cccccc" : "#888888";
-      ctx.fill();
-
-      // Border
-      ctx.strokeStyle = isSelected ? "#ffffff" : "rgba(255,255,255,0.3)";
-      ctx.lineWidth = isSelected ? 2 : 1;
-      ctx.stroke();
-
-      // Label
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-
-      if (showLabel) {
-        // Full label on hover/select — above the node
-        const fontSize = Math.max(11 / globalScale, 4);
-        ctx.font = `600 ${fontSize}px JetBrains Mono, monospace`;
-        const label = node.title.length > 55 ? node.title.slice(0, 55) + "..." : node.title;
-        const metrics = ctx.measureText(label);
-        const px = 5, py = 3;
-        ctx.fillStyle = "rgba(0,0,0,0.9)";
-        ctx.fillRect(x - metrics.width / 2 - px, y - r - fontSize - py * 2 - 6, metrics.width + px * 2, fontSize + py * 2);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillText(label, x, y - r - fontSize - py - 6);
-      } else {
-        // Short label below node
-        const smallFont = Math.max(7 / globalScale, 2);
-        ctx.font = `${smallFont}px JetBrains Mono, monospace`;
-        const shortLabel = node.title.length > 22 ? node.title.slice(0, 22) + "..." : node.title;
-        ctx.fillStyle = "rgba(0,0,0,0.5)";
-        ctx.fillText(shortLabel, x + 0.3, y + r + 2 + 0.3);
-        ctx.fillStyle = "#888888";
-        ctx.fillText(shortLabel, x, y + r + 2);
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+  const connectedToHovered = useMemo(() => {
+    if (!hoveredId) return new Set<string>();
+    return connectionMap.get(hoveredId) || new Set<string>();
+  }, [hoveredId, connectionMap]);
 
   if (papers.length === 0) {
     return (
@@ -244,44 +66,115 @@ export default function PaperGraph({
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full" style={{ background: "#000" }}>
-      <ForceGraph2D
-        ref={graphRef}
-        width={dimensions.width}
-        height={dimensions.height}
-        graphData={graphData}
-        nodeCanvasObject={paintNode}
-        nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D) => {
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, 25, 0, 2 * Math.PI);
-          ctx.fillStyle = color;
-          ctx.fill();
-        }}
-        onNodeClick={handleNodeClick}
-        onNodeHover={(node: any) => {
-          hoveredRef.current = node?.id || null;
-          if (containerRef.current) {
-            containerRef.current.style.cursor = node ? "pointer" : "default";
-          }
-        }}
-        enableNodeDrag={false}
-        enablePanInteraction={true}
-        enableZoomInteraction={true}
-        onRenderFramePre={paintBefore}
-        linkColor={() => "rgba(255,255,255,0.08)"}
-        linkWidth={1}
-        backgroundColor="#000000"
-        cooldownTicks={100}
-        warmupTicks={100}
-        d3AlphaDecay={0.05}
-        d3VelocityDecay={0.4}
-        d3Force="charge"
-        d3ForceConfig={{
-          charge: { strength: -150, distanceMax: 150 },
-          link: { distance: 50 },
-          center: { strength: 0.08 },
-        }}
-      />
+    <div className="w-full h-full overflow-auto bg-bg p-8">
+      <div className="flex flex-wrap gap-6">
+        {groups.map((group) => (
+          <div
+            key={group.category}
+            className="border border-border rounded-sm bg-surface/50 p-5 min-w-[250px] max-w-[400px] flex-1"
+          >
+            {/* Category header */}
+            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-text-dim mb-4 pb-2 border-b border-border">
+              {group.category}
+              <span className="ml-2 text-text-dim font-normal">({group.papers.length})</span>
+            </h3>
+
+            {/* Paper nodes */}
+            <div className="space-y-1">
+              {group.papers.map((paper) => {
+                const isSelected = paper.id === selectedPaperId;
+                const isHovered = paper.id === hoveredId;
+                const isConnected = connectedToHovered.has(paper.id);
+                const bs = (paper as any).bs_score;
+                const legit = bs ? 100 - bs.overall : null;
+                const interesting = bs?.interesting ?? null;
+
+                return (
+                  <button
+                    key={paper.id}
+                    onClick={() => onSelectPaper(paper.id)}
+                    onMouseEnter={() => setHoveredId(paper.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    className={`w-full text-left px-3 py-2.5 rounded-sm transition-all duration-150 group ${
+                      isSelected
+                        ? "bg-white/10 border border-white/30"
+                        : isHovered
+                        ? "bg-white/5 border border-white/10"
+                        : isConnected
+                        ? "bg-white/[0.03] border border-white/10"
+                        : "border border-transparent hover:bg-white/5"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Node dot */}
+                      <div
+                        className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 transition-all ${
+                          isSelected
+                            ? "bg-white shadow-[0_0_6px_rgba(255,255,255,0.5)]"
+                            : paper.is_read
+                            ? "bg-white/60"
+                            : "bg-white/30"
+                        }`}
+                      />
+
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-xs leading-tight transition-colors ${
+                            isSelected ? "text-white font-medium" : "text-text group-hover:text-white"
+                          }`}
+                        >
+                          {paper.title}
+                        </p>
+                        <p className="text-[9px] text-text-dim mt-1 truncate">
+                          {(paper.authors as string[])?.slice(0, 3).join(", ")}
+                          {(paper.authors as string[])?.length > 3 && " et al."}
+                        </p>
+                      </div>
+
+                      {/* Scores */}
+                      {legit != null && (
+                        <div className="shrink-0 flex gap-2 items-center">
+                          <div className="text-center">
+                            <p className="text-[8px] text-text-dim">INT</p>
+                            <p
+                              className="text-[10px] font-bold"
+                              style={{
+                                color:
+                                  interesting >= 70 ? "#8bf7c4" : interesting >= 40 ? "#f7e88b" : "#666",
+                              }}
+                            >
+                              {interesting}
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[8px] text-text-dim">LEG</p>
+                            <p
+                              className="text-[10px] font-bold"
+                              style={{
+                                color:
+                                  legit >= 70 ? "#8bf7c4" : legit >= 40 ? "#f7e88b" : "#f78b8b",
+                              }}
+                            >
+                              {legit}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Connected papers indicator */}
+                    {isHovered && connectionMap.has(paper.id) && (
+                      <p className="text-[8px] text-text-dim mt-1 ml-5">
+                        Connected to {connectionMap.get(paper.id)!.size} papers
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
