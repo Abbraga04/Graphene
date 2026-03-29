@@ -25,19 +25,29 @@ Abstract: ${abstract}`,
 }
 
 export async function chatAboutPaper(
-  title: string,
-  abstract: string,
-  summary: string | null,
+  paper: Record<string, unknown>,
   history: { role: "user" | "assistant"; content: string }[],
   question: string
 ): Promise<string> {
-  const systemPrompt = `You are a research assistant helping a user understand an academic paper. Be concise and precise. Use the paper context below to answer questions. Do NOT use markdown formatting — no **, ##, or other markup. Use plain text only.
+  const bsScore = paper.bs_score as Record<string, unknown> | null;
+  const bsContext = bsScore
+    ? `\nLegitness Score: ${100 - (bsScore.overall as number)}/100 (higher = more legit)
+Interesting Score: ${bsScore.interesting}/100
+Verdict: ${bsScore.verdict}
+Breakdown — Honesty: ${100 - ((bsScore.overclaiming as number) || 0)}, Rigor: ${100 - ((bsScore.rigor as number) || 0)}, Novelty: ${100 - ((bsScore.novelty as number) || 0)}, Credibility: ${100 - ((bsScore.credibility as number) || 0)}, Reproducibility: ${100 - ((bsScore.reproducibility as number) || 0)}
+Why interesting: ${bsScore.interesting_why || "N/A"}`
+    : "";
 
-Paper: "${title}"
+  const systemPrompt = `You are a research assistant helping a user understand an academic paper. Be concise and precise. You have full context about this paper including its metadata, summary, and ratings. Do NOT use markdown formatting — no **, ##, or other markup. Use plain text only.
 
-Abstract: ${abstract}
+Paper: "${paper.title}"
+Authors: ${(paper.authors as string[])?.join(", ") || "Unknown"}
+Categories: ${(paper.categories as string[])?.join(", ") || "Unknown"}
+Published: ${paper.published || "Unknown"}
 
-${summary ? `Summary: ${summary}` : ""}`;
+Abstract: ${paper.abstract || "N/A"}
+
+${paper.summary ? `AI Summary: ${paper.summary}` : ""}${bsContext}`;
 
   const messages = [
     ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
