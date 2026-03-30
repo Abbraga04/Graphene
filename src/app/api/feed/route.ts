@@ -61,14 +61,14 @@ export async function GET(req: NextRequest) {
 
   // Get profiles for first adders
   const adderIds = [...new Set(Object.values(firstAdderMap))];
-  let profileMap: Record<string, { username: string; display_name: string | null }> = {};
+  let profileMap: Record<string, { username: string; display_name: string | null; is_verified: boolean }> = {};
   if (adderIds.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, username, display_name")
+      .select("id, username, display_name, is_verified")
       .in("id", adderIds);
     (profiles || []).forEach((p) => {
-      profileMap[p.id] = { username: p.username, display_name: p.display_name };
+      profileMap[p.id] = { username: p.username, display_name: p.display_name, is_verified: p.is_verified || false };
     });
   }
 

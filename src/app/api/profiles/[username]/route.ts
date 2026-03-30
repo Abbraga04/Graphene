@@ -69,6 +69,7 @@ export async function GET(
       bio: profile.bio,
       avatar_url: profile.avatar_url,
       created_at: profile.created_at,
+      is_verified: profile.is_verified || false,
     },
     starred_papers: starredPapers,
     public_papers: publicPapers,

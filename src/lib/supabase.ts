@@ -54,6 +54,7 @@ export type Profile = {
   display_name: string | null;
   bio: string;
   avatar_url: string | null;
+  is_verified: boolean;
   created_at: string;
   updated_at: string;
 };
