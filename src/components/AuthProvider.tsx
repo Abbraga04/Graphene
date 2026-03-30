@@ -8,8 +8,7 @@ type AuthContext = {
   user: User | null;
   supabase: SupabaseClient;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (email: string, password: string, username: string) => Promise<{ error?: string }>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   getToken: () => Promise<string | null>;
 };
@@ -40,18 +39,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message };
-  };
-
-  const signUp = async (email: string, password: string, username: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { username } },
+  const signInWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + "/auth/callback" },
     });
-    return { error: error?.message };
   };
 
   const signOut = async () => {
@@ -65,7 +57,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   };
 
   return (
-    <AuthCtx.Provider value={{ user, supabase, loading, signIn, signUp, signOut, getToken }}>
+    <AuthCtx.Provider value={{ user, supabase, loading, signInWithGoogle, signOut, getToken }}>
       {children}
     </AuthCtx.Provider>
   );
