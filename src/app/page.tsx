@@ -74,28 +74,13 @@ function AppContent({ user, signOut, getToken }: { user: { id: string; email?: s
   const [detailWidth, setDetailWidth] = useState(420);
   const [username, setUsername] = useState<string | null>(null);
 
-  // Check if user has a profile, auto-create from signup metadata if needed
+  // Check/create profile (server auto-creates from signup metadata)
   useEffect(() => {
     const checkProfile = async () => {
       try {
         const res = await authFetch("/api/profiles/me");
         const data = await res.json();
-        if (data.profile) {
-          setUsername(data.profile.username);
-          return;
-        }
-        // Auto-create profile from signup metadata
-        const metaUsername = (user as any).user_metadata?.username;
-        if (metaUsername) {
-          const createRes = await authFetch("/api/profiles/me", {
-            method: "PATCH",
-            body: JSON.stringify({ username: metaUsername }),
-          });
-          const createData = await createRes.json();
-          if (createData.profile) {
-            setUsername(createData.profile.username);
-          }
-        }
+        if (data.profile) setUsername(data.profile.username);
       } catch {}
     };
     checkProfile();
